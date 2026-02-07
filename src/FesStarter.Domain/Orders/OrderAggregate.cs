@@ -1,7 +1,8 @@
 using FileEventStore;
 using FileEventStore.Aggregates;
+using FesStarter.Contracts.Orders;
 
-namespace FesStarter.Api.Domain.Orders;
+namespace FesStarter.Domain.Orders;
 
 public class OrderAggregate : Aggregate
 {
@@ -62,23 +63,7 @@ public class OrderAggregate : Aggregate
 
 public enum OrderStatus
 {
-    Pending,    // Order placed, waiting for stock reservation
-    Placed,     // Stock reserved, ready to ship
-    Shipped     // Order shipped
-}
-
-// Events
-public record OrderPlaced(string OrderId, string ProductId, int Quantity, DateTime PlacedAt) : IStoreableEvent
-{
-    public string TimestampUtc { get; set; } = "";
-}
-
-public record OrderStockReserved(string OrderId, DateTime ReservedAt) : IStoreableEvent
-{
-    public string TimestampUtc { get; set; } = "";
-}
-
-public record OrderShipped(string OrderId, DateTime ShippedAt) : IStoreableEvent
-{
-    public string TimestampUtc { get; set; } = "";
+    Pending,
+    Placed,
+    Shipped
 }

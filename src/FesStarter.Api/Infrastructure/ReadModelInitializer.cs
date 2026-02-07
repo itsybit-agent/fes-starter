@@ -4,66 +4,46 @@ using FesStarter.Api.Features.Orders;
 
 namespace FesStarter.Api.Infrastructure;
 
-/// <summary>
-/// Rebuilds all read models from events on startup.
-/// Scans all stream directories and replays events.
-/// </summary>
-public class ReadModelInitializer : IHostedService
+public class ReadModelInitializer(
+    OrderReadModel orderReadModel,
+    StockReadModel stockReadModel,
+    IEventStore eventStore,
+    IWebHostEnvironment environment,
+    ILogger<ReadModelInitializer> logger) : IHostedService
 {
-    private readonly OrderReadModel _orderReadModel;
-    private readonly StockReadModel _stockReadModel;
-    private readonly IEventStore _eventStore;
-    private readonly string _dataPath;
-    private readonly ILogger<ReadModelInitializer> _logger;
-
-    public ReadModelInitializer(
-        OrderReadModel orderReadModel,
-        StockReadModel stockReadModel,
-        IEventStore eventStore,
-        IWebHostEnvironment environment,
-        ILogger<ReadModelInitializer> logger)
-    {
-        _orderReadModel = orderReadModel;
-        _stockReadModel = stockReadModel;
-        _eventStore = eventStore;
-        _dataPath = Path.Combine(environment.ContentRootPath, "data", "events");
-        _logger = logger;
-    }
-
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (!Directory.Exists(_dataPath))
+        var dataPath = Path.Combine(environment.ContentRootPath, "data", "events");
+        
+        if (!Directory.Exists(dataPath))
         {
-            _logger.LogInformation("No event data directory found, starting with empty read models");
+            logger.LogInformation("No event data found, starting fresh");
             return;
         }
 
-        var streamDirs = Directory.GetDirectories(_dataPath);
-        _logger.LogInformation("Rebuilding read models from {Count} streams", streamDirs.Length);
+        var streams = Directory.GetDirectories(dataPath);
+        logger.LogInformation("Rebuilding read models from {Count} streams", streams.Length);
 
-        foreach (var streamDir in streamDirs)
+        foreach (var streamDir in streams)
         {
             var streamId = Path.GetFileName(streamDir);
             try
             {
-                var events = await _eventStore.FetchEventsAsync(streamId);
+                var events = await eventStore.FetchEventsAsync(streamId);
                 foreach (var evt in events)
                 {
-                    // Route events to appropriate read models
-                    _orderReadModel.Apply(evt);
-                    _stockReadModel.Apply(evt);
+                    orderReadModel.Apply(evt);
+                    stockReadModel.Apply(evt);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to load stream {StreamId}", streamId);
+                logger.LogWarning(ex, "Failed to load stream {StreamId}", streamId);
             }
         }
 
-        _logger.LogInformation(
-            "Read models rebuilt: {OrderCount} orders, {StockCount} products", 
-            _orderReadModel.GetAll().Count,
-            _stockReadModel.GetAll().Count);
+        logger.LogInformation("Read models ready: {Orders} orders, {Products} products",
+            orderReadModel.GetAll().Count, stockReadModel.GetAll().Count);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
