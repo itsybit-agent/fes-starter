@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FesStarter.ServiceDefaults\FesStarter.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\..\FileBasedEventStore\src\FileEventStore\FileEventStore.csproj" />
   </ItemGroup>
 

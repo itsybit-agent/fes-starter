@@ -6,6 +6,9 @@ using FesStarter.Api.Features.ListTodos;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add Aspire service defaults (OpenTelemetry, health checks, etc.)
+builder.AddServiceDefaults();
+
 // Add services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
@@ -42,6 +45,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+
+// Aspire health endpoints
+app.MapDefaultEndpoints();
 
 // Map endpoints (vertical slices)
 app.MapCreateTodo();
