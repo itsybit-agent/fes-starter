@@ -5,7 +5,7 @@ var api = builder.AddProject<Projects.FesStarter_Api>("api");
 var web = builder.AddNpmApp("web", "../FesStarter.Web", "start")
     .WithReference(api)
     .WaitFor(api)
-    .WithHttpEndpoint(env: "PORT")
+    .WithHttpEndpoint(port: 4200, name: "web-http", env: "PORT")
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();
