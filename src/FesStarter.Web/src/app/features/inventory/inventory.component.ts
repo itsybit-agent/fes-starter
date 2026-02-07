@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../shared/api.service';
@@ -24,7 +24,7 @@ import { StockDto } from '../../shared/api.types';
 
       <div class="stock-list">
         <h3>Stock Levels</h3>
-        <table *ngIf="stocks.length > 0">
+        <table *ngIf="stocks().length > 0">
           <thead>
             <tr>
               <th>Product ID</th>
@@ -35,7 +35,7 @@ import { StockDto } from '../../shared/api.types';
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let stock of stocks" [class.low-stock]="stock.availableQuantity < 5">
+            <tr *ngFor="let stock of stocks()" [class.low-stock]="stock.availableQuantity < 5">
               <td>{{stock.productId | slice:0:12}}</td>
               <td>{{stock.productName}}</td>
               <td>{{stock.quantityOnHand}}</td>
@@ -44,7 +44,7 @@ import { StockDto } from '../../shared/api.types';
             </tr>
           </tbody>
         </table>
-        <p *ngIf="stocks.length === 0">No products in inventory</p>
+        <p *ngIf="stocks().length === 0">No products in inventory</p>
       </div>
     </div>
   `,
@@ -60,7 +60,7 @@ import { StockDto } from '../../shared/api.types';
   `]
 })
 export class InventoryComponent implements OnInit {
-  stocks: StockDto[] = [];
+  stocks = signal<StockDto[]>([]);
   productId = '';
   productName = '';
   initialQuantity = 100;
@@ -72,7 +72,7 @@ export class InventoryComponent implements OnInit {
   }
 
   loadStock() {
-    this.api.listStock().subscribe(stocks => this.stocks = stocks);
+    this.api.listStock().subscribe(data => this.stocks.set(data));
   }
 
   addProduct() {

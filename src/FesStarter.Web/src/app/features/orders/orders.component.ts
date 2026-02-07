@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../shared/api.service';
@@ -12,11 +12,11 @@ import { OrderDto, StockDto } from '../../shared/api.types';
     <div class="orders-container">
       <h2>Orders</h2>
       
-      <div class="place-order" *ngIf="products.length > 0">
+      <div class="place-order" *ngIf="products().length > 0">
         <h3>Place Order</h3>
         <select [(ngModel)]="selectedProductId">
           <option value="">Select product...</option>
-          <option *ngFor="let p of products" [value]="p.productId">
+          <option *ngFor="let p of products()" [value]="p.productId">
             {{p.productName}} ({{p.availableQuantity}} available)
           </option>
         </select>
@@ -25,11 +25,11 @@ import { OrderDto, StockDto } from '../../shared/api.types';
           Place Order
         </button>
       </div>
-      <p *ngIf="products.length === 0" class="hint">Add products in Inventory first</p>
+      <p *ngIf="products().length === 0" class="hint">Add products in Inventory first</p>
 
       <div class="order-list">
         <h3>Order History</h3>
-        <table *ngIf="orders.length > 0">
+        <table *ngIf="orders().length > 0">
           <thead>
             <tr>
               <th>Order ID</th>
@@ -40,7 +40,7 @@ import { OrderDto, StockDto } from '../../shared/api.types';
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let order of orders" [class]="order.status.toLowerCase()">
+            <tr *ngFor="let order of orders()" [class]="order.status.toLowerCase()">
               <td>{{order.orderId | slice:0:8}}</td>
               <td>{{order.productId | slice:0:8}}</td>
               <td>{{order.quantity}}</td>
@@ -55,7 +55,7 @@ import { OrderDto, StockDto } from '../../shared/api.types';
             </tr>
           </tbody>
         </table>
-        <p *ngIf="orders.length === 0">No orders yet</p>
+        <p *ngIf="orders().length === 0">No orders yet</p>
       </div>
     </div>
   `,
@@ -74,8 +74,8 @@ import { OrderDto, StockDto } from '../../shared/api.types';
   `]
 })
 export class OrdersComponent implements OnInit {
-  orders: OrderDto[] = [];
-  products: StockDto[] = [];
+  orders = signal<OrderDto[]>([]);
+  products = signal<StockDto[]>([]);
   selectedProductId = '';
   quantity = 1;
 
@@ -87,11 +87,11 @@ export class OrdersComponent implements OnInit {
   }
 
   loadOrders() {
-    this.api.listOrders().subscribe(orders => this.orders = orders);
+    this.api.listOrders().subscribe(data => this.orders.set(data));
   }
 
   loadProducts() {
-    this.api.listStock().subscribe(products => this.products = products);
+    this.api.listStock().subscribe(data => this.products.set(data));
   }
 
   placeOrder() {
