@@ -1,4 +1,3 @@
-// Orders
 export interface PlaceOrderCommand {
   productId: string;
   quantity: number;
@@ -15,18 +14,4 @@ export interface OrderDto {
   status: string;
   placedAt: string;
   shippedAt?: string;
-}
-
-// Inventory
-export interface InitializeStockRequest {
-  productName: string;
-  initialQuantity: number;
-}
-
-export interface StockDto {
-  productId: string;
-  productName: string;
-  quantityOnHand: number;
-  quantityReserved: number;
-  availableQuantity: number;
 }
