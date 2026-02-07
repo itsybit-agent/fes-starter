@@ -4,23 +4,37 @@ using FesStarter.Api.Domain;
 namespace FesStarter.Api.Features.ListTodos;
 
 /// <summary>
-/// Simple in-memory read model for todos.
-/// In production, this would be backed by a database and updated via event subscriptions.
+/// In-memory read model for todos.
+/// Updated inline by command handlers after events are saved.
+/// In production, you'd persist this to a database.
 /// </summary>
 public class TodoReadModel
 {
     private readonly ConcurrentDictionary<string, TodoDto> _todos = new();
 
-    public void Apply(TodoCreated evt)
+    public void Apply(object evt)
     {
-        _todos[evt.TodoId] = new TodoDto(evt.TodoId, evt.Title, false, evt.CreatedAt, null);
-    }
-
-    public void Apply(TodoCompleted evt)
-    {
-        if (_todos.TryGetValue(evt.TodoId, out var todo))
+        switch (evt)
         {
-            _todos[evt.TodoId] = todo with { IsCompleted = true, CompletedAt = evt.CompletedAt };
+            case TodoCreated created:
+                _todos[created.TodoId] = new TodoDto(
+                    created.TodoId, 
+                    created.Title, 
+                    false, 
+                    created.CreatedAt, 
+                    null);
+                break;
+                
+            case TodoCompleted completed:
+                if (_todos.TryGetValue(completed.TodoId, out var todo))
+                {
+                    _todos[completed.TodoId] = todo with 
+                    { 
+                        IsCompleted = true, 
+                        CompletedAt = completed.CompletedAt 
+                    };
+                }
+                break;
         }
     }
 

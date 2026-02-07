@@ -19,6 +19,7 @@ builder.Services.AddFileEventStore(dataPath);
 
 // Read model (singleton - in production, use a proper database)
 builder.Services.AddSingleton<TodoReadModel>();
+builder.Services.AddHostedService<ReadModelInitializer>();
 
 // Handlers
 builder.Services.AddScoped<CreateTodoHandler>();
