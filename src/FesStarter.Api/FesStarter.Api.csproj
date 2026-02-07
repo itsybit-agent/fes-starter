@@ -9,8 +9,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
     <PackageReference Include="MediatR" Version="12.4.1" />
-    <ProjectReference Include="..\FesStarter.Contracts\FesStarter.Contracts.csproj" />
-    <ProjectReference Include="..\FesStarter.Domain\FesStarter.Domain.csproj" />
+    <ProjectReference Include="..\FesStarter.Events\FesStarter.Events.csproj" />
+    <ProjectReference Include="..\FesStarter.Orders\FesStarter.Orders.csproj" />
+    <ProjectReference Include="..\FesStarter.Inventory\FesStarter.Inventory.csproj" />
     <ProjectReference Include="..\FesStarter.ServiceDefaults\FesStarter.ServiceDefaults.csproj" />
   </ItemGroup>
 

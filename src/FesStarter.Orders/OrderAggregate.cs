@@ -1,8 +1,8 @@
-using FesStarter.Contracts.Orders;
+using FesStarter.Events.Orders;
 using FileEventStore;
 using FileEventStore.Aggregates;
 
-namespace FesStarter.Domain.Orders;
+namespace FesStarter.Orders;
 
 public class OrderAggregate : Aggregate
 {
@@ -16,7 +16,7 @@ public class OrderAggregate : Aggregate
     {
         if (!string.IsNullOrEmpty(Id))
             throw new InvalidOperationException("Order already exists");
-        
+
         if (quantity <= 0)
             throw new ArgumentException("Quantity must be positive", nameof(quantity));
 
@@ -35,7 +35,7 @@ public class OrderAggregate : Aggregate
     {
         if (Status != OrderStatus.Pending)
             throw new InvalidOperationException($"Cannot reserve order in status {Status}");
-        
+
         Emit(new OrderStockReserved(Id, DateTime.UtcNow));
     }
 

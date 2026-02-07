@@ -1,6 +1,6 @@
 using FileEventStore;
 
-namespace FesStarter.Contracts.Inventory;
+namespace FesStarter.Events.Inventory;
 
 public record StockInitialized(string ProductId, string ProductName, int InitialQuantity, DateTime InitializedAt) : IStoreableEvent
 {

@@ -1,7 +1,8 @@
 using FileEventStore;
-using FesStarter.Api.Features.Orders;
-using FesStarter.Api.Features.Inventory;
 using FesStarter.Api.Infrastructure;
+using FesStarter.Events;
+using FesStarter.Orders;
+using FesStarter.Inventory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,16 +19,11 @@ builder.Services.AddFileEventStore(dataPath);
 
 // Infrastructure
 builder.Services.AddScoped<IEventPublisher, MediatREventPublisher>();
-builder.Services.AddSingleton<OrderReadModel>();
-builder.Services.AddSingleton<StockReadModel>();
 builder.Services.AddHostedService<ReadModelInitializer>();
 
-// Handlers
-builder.Services.AddScoped<PlaceOrderHandler>();
-builder.Services.AddScoped<ShipOrderHandler>();
-builder.Services.AddScoped<ListOrdersHandler>();
-builder.Services.AddScoped<InitializeStockHandler>();
-builder.Services.AddScoped<GetStockHandler>();
+// Modules
+builder.Services.AddOrdersModule();
+builder.Services.AddInventoryModule();
 
 builder.Services.AddCors(options =>
 {
@@ -42,13 +38,8 @@ if (app.Environment.IsDevelopment()) app.MapOpenApi();
 app.UseCors();
 app.MapDefaultEndpoints();
 
-// Orders
-PlaceOrderEndpoint.Map(app);
-ShipOrderEndpoint.Map(app);
-ListOrdersEndpoint.Map(app);
-
-// Inventory
-InitializeStockEndpoint.Map(app);
-GetStockEndpoint.Map(app);
+// Module endpoints
+app.MapOrderEndpoints();
+app.MapInventoryEndpoints();
 
 app.Run();

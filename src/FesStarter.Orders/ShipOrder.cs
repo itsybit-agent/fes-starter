@@ -1,8 +1,9 @@
 using FileEventStore.Session;
-using FesStarter.Domain.Orders;
-using FesStarter.Api.Infrastructure;
+using FesStarter.Events;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
-namespace FesStarter.Api.Features.Orders;
+namespace FesStarter.Orders;
 
 public record ShipOrderCommand(string OrderId);
 
@@ -11,15 +12,15 @@ public class ShipOrderHandler(IEventSessionFactory sessionFactory, IEventPublish
     public async Task HandleAsync(ShipOrderCommand command)
     {
         await using var session = sessionFactory.OpenSession();
-        
+
         var order = await session.AggregateStreamAsync<OrderAggregate>($"order-{command.OrderId}")
             ?? throw new InvalidOperationException($"Order {command.OrderId} not found");
-        
+
         order.Ship();
-        
+
         var events = order.UncommittedEvents.ToList();
         await session.SaveChangesAsync();
-        
+
         foreach (var evt in events) readModel.Apply(evt);
         await eventPublisher.PublishAsync(events);
     }

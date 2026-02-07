@@ -1,9 +1,7 @@
 using FileEventStore.Session;
-using FesStarter.Contracts.Orders;
-using FesStarter.Domain.Inventory;
-using FesStarter.Domain.Orders;
-using FesStarter.Api.Features.Inventory;
-using FesStarter.Api.Features.Orders;
+using FesStarter.Events.Orders;
+using FesStarter.Inventory;
+using FesStarter.Orders;
 using FesStarter.Api.Infrastructure;
 using MediatR;
 
@@ -27,7 +25,7 @@ public class OrderToInventoryHandler(
         logger.LogInformation("Translating OrderPlaced -> StockReserved for Order {OrderId}", evt.OrderId);
 
         await using var session = sessionFactory.OpenSession();
-        
+
         var stock = await session.AggregateStreamAsync<ProductStockAggregate>($"stock-{evt.ProductId}");
         if (stock == null)
         {

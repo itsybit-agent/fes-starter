@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using FileEventStore;
-using FesStarter.Contracts.Inventory;
+using FesStarter.Events.Inventory;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
-namespace FesStarter.Api.Features.Inventory;
+namespace FesStarter.Inventory;
 
 public record StockDto(string ProductId, string ProductName, int QuantityOnHand, int QuantityReserved, int AvailableQuantity);
 
@@ -28,8 +30,8 @@ public class StockReadModel
                 if (_stocks.TryGetValue(e.ProductId, out var toDeduct))
                 {
                     var newOnHand = toDeduct.QuantityOnHand - e.Quantity;
-                    var newReserved = toDeduct.QuantityReserved - e.Quantity;
-                    _stocks[e.ProductId] = toDeduct with { QuantityOnHand = newOnHand, QuantityReserved = newReserved, AvailableQuantity = newOnHand - newReserved };
+                    var newReserved2 = toDeduct.QuantityReserved - e.Quantity;
+                    _stocks[e.ProductId] = toDeduct with { QuantityOnHand = newOnHand, QuantityReserved = newReserved2, AvailableQuantity = newOnHand - newReserved2 };
                 }
                 break;
             case StockRestocked e:

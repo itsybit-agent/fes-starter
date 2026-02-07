@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using FileEventStore;
-using FesStarter.Contracts.Orders;
+using FesStarter.Events.Orders;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
-namespace FesStarter.Api.Features.Orders;
+namespace FesStarter.Orders;
 
 public record OrderDto(string OrderId, string ProductId, int Quantity, string Status, DateTime PlacedAt, DateTime? ShippedAt);
 

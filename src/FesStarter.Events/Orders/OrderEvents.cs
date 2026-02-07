@@ -1,6 +1,6 @@
 using FileEventStore;
 
-namespace FesStarter.Contracts.Orders;
+namespace FesStarter.Events.Orders;
 
 public record OrderPlaced(string OrderId, string ProductId, int Quantity, DateTime PlacedAt) : IStoreableEvent
 {

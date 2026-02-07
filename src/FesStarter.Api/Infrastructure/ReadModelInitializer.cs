@@ -1,6 +1,6 @@
 using FileEventStore;
-using FesStarter.Api.Features.Inventory;
-using FesStarter.Api.Features.Orders;
+using FesStarter.Orders;
+using FesStarter.Inventory;
 
 namespace FesStarter.Api.Infrastructure;
 
@@ -14,7 +14,7 @@ public class ReadModelInitializer(
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         var dataPath = Path.Combine(environment.ContentRootPath, "data", "events");
-        
+
         if (!Directory.Exists(dataPath))
         {
             logger.LogInformation("No event data found, starting fresh");
