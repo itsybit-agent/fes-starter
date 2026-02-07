@@ -1,20 +1,21 @@
 <form class="create-todo" (ngSubmit)="submit()">
   <h3>Add Todo</h3>
-  
+
   <div class="input-group">
-    <input 
-      type="text" 
-      [(ngModel)]="title" 
+    <input
+      type="text"
+      [ngModel]="title()"
+      (ngModelChange)="title.set($event)"
       name="title"
       placeholder="What needs to be done?"
-      [disabled]="submitting"
+      [disabled]="submitting()"
     />
-    <button type="submit" [disabled]="submitting">
-      {{ submitting ? 'Adding...' : 'Add' }}
+    <button type="submit" [disabled]="submitting()">
+      {{ submitting() ? 'Adding...' : 'Add' }}
     </button>
   </div>
 
-  @if (error) {
-    <p class="error">{{ error }}</p>
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
   }
 </form>

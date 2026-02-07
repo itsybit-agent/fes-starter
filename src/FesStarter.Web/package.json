@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node -e \"const{execSync}=require('child_process');execSync('ng serve --port '+(process.env.PORT||4200),{stdio:'inherit'})\"",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

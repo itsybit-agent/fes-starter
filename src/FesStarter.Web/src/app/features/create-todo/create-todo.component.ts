@@ -1,42 +1,41 @@
-import { Component, EventEmitter, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../shared/api.service';
 
 @Component({
   selector: 'app-create-todo',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './create-todo.component.html',
   styleUrl: './create-todo.component.scss'
 })
 export class CreateTodoComponent {
-  title = '';
-  submitting = false;
-  error: string | null = null;
+  title = signal('');
+  submitting = signal(false);
+  error = signal<string | null>(null);
 
   @Output() todoCreated = new EventEmitter<void>();
 
   constructor(private api: ApiService) {}
 
   submit(): void {
-    if (!this.title.trim()) {
-      this.error = 'Title is required';
+    if (!this.title().trim()) {
+      this.error.set('Title is required');
       return;
     }
 
-    this.submitting = true;
-    this.error = null;
+    this.submitting.set(true);
+    this.error.set(null);
 
-    this.api.createTodo({ title: this.title }).subscribe({
+    this.api.createTodo({ title: this.title() }).subscribe({
       next: () => {
-        this.title = '';
-        this.submitting = false;
+        this.title.set('');
+        this.submitting.set(false);
         this.todoCreated.emit();
       },
       error: (err) => {
-        this.error = 'Failed to create todo';
-        this.submitting = false;
+        this.error.set('Failed to create todo');
+        this.submitting.set(false);
         console.error(err);
       }
     });

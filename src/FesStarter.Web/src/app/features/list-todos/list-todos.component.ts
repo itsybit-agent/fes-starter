@@ -1,19 +1,17 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, signal } from '@angular/core';
 import { ApiService } from '../../shared/api.service';
 import { TodoDto } from '../../shared/api.types';
 
 @Component({
   selector: 'app-list-todos',
   standalone: true,
-  imports: [CommonModule],
   templateUrl: './list-todos.component.html',
   styleUrl: './list-todos.component.scss'
 })
 export class ListTodosComponent implements OnInit {
-  todos: TodoDto[] = [];
-  loading = false;
-  error: string | null = null;
+  todos = signal<TodoDto[]>([]);
+  loading = signal(false);
+  error = signal<string | null>(null);
 
   constructor(private api: ApiService) {}
 
@@ -22,17 +20,17 @@ export class ListTodosComponent implements OnInit {
   }
 
   loadTodos(): void {
-    this.loading = true;
-    this.error = null;
-    
+    this.loading.set(true);
+    this.error.set(null);
+
     this.api.listTodos().subscribe({
       next: (response) => {
-        this.todos = response.todos;
-        this.loading = false;
+        this.todos.set(response.todos);
+        this.loading.set(false);
       },
       error: (err) => {
-        this.error = 'Failed to load todos';
-        this.loading = false;
+        this.error.set('Failed to load todos');
+        this.loading.set(false);
         console.error(err);
       }
     });
@@ -41,11 +39,10 @@ export class ListTodosComponent implements OnInit {
   completeTodo(id: string): void {
     this.api.completeTodo(id).subscribe({
       next: () => {
-        // Reload to get updated state
         this.loadTodos();
       },
       error: (err) => {
-        this.error = 'Failed to complete todo';
+        this.error.set('Failed to complete todo');
         console.error(err);
       }
     });
