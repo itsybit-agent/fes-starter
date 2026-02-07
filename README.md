@@ -1,47 +1,61 @@
 # FesStarter - FileEventStore Vertical Slice Starter
 
-A starter kit demonstrating:
+A full-stack starter kit demonstrating:
 - **Vertical Slice Architecture** - Features organized by use case, not layer
 - **Event Sourcing** with [FileEventStore](https://github.com/jocelynenglund/FileBasedEventStore)
+- **Angular Frontend** - Matching vertical slices on the client
 
 ## Quick Start
 
+**Run the API:**
 ```bash
-# Clone and run
-git clone https://github.com/itsybit-agent/fes-starter.git
 cd fes-starter
 dotnet run --project src/FesStarter.Api
+# API at http://localhost:5000
 ```
 
-API will be available at `http://localhost:5000`
+**Run the Angular app (separate terminal):**
+```bash
+cd src/FesStarter.Web
+npm install
+npm start
+# App at http://localhost:4200
+```
 
 ## Project Structure
 
 ```
 fes-starter/
 ├── src/
-│   └── FesStarter.Api/
-│       ├── Features/                  # Vertical slices
-│       │   ├── CreateTodo/
-│       │   │   ├── Command.cs
-│       │   │   ├── Handler.cs
-│       │   │   └── Endpoint.cs
-│       │   ├── CompleteTodo/
-│       │   │   └── ...
-│       │   └── ListTodos/
-│       │       ├── Query.cs
-│       │       ├── Handler.cs
-│       │       ├── Endpoint.cs
-│       │       └── TodoReadModel.cs
-│       ├── Domain/
-│       │   └── TodoAggregate.cs       # Aggregate + Events
-│       └── Program.cs
+│   ├── FesStarter.Api/               # Backend API
+│   │   ├── Features/                 # Vertical slices
+│   │   │   ├── CreateTodo/
+│   │   │   │   ├── Command.cs
+│   │   │   │   ├── Handler.cs
+│   │   │   │   └── Endpoint.cs
+│   │   │   ├── CompleteTodo/
+│   │   │   └── ListTodos/
+│   │   └── Domain/
+│   │       └── TodoAggregate.cs
+│   │
+│   └── FesStarter.Web/               # Angular Frontend
+│       └── src/app/
+│           ├── features/             # Matching vertical slices
+│           │   ├── create-todo/
+│           │   │   ├── create-todo.component.ts
+│           │   │   ├── create-todo.component.html
+│           │   │   └── create-todo.component.scss
+│           │   └── list-todos/
+│           │       └── ...
+│           └── shared/
+│               ├── api.service.ts    # HTTP client
+│               └── api.types.ts      # Shared DTOs
 │
 └── tests/
     └── FesStarter.Api.Tests/
 ```
 
-## Vertical Slice Anatomy
+## Vertical Slices - Backend
 
 Each feature is self-contained:
 
@@ -56,8 +70,6 @@ Features/CreateTodo/
 ```csharp
 public async Task<CreateTodoResponse> HandleAsync(CreateTodoCommand command)
 {
-    var id = Guid.NewGuid().ToString();
-    
     await using var session = _sessionFactory.OpenSession();
     
     var todo = await session.AggregateStreamOrCreateAsync<TodoAggregate>(id);
@@ -69,6 +81,26 @@ public async Task<CreateTodoResponse> HandleAsync(CreateTodoCommand command)
 }
 ```
 
+## Vertical Slices - Frontend
+
+Each Angular feature matches a backend slice:
+
+```
+features/create-todo/
+├── create-todo.component.ts    # Component logic
+├── create-todo.component.html  # Template
+└── create-todo.component.scss  # Styles
+```
+
+**Component uses shared API service:**
+```typescript
+this.api.createTodo({ title: this.title }).subscribe({
+  next: () => {
+    this.todoCreated.emit();
+  }
+});
+```
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
@@ -77,37 +109,19 @@ public async Task<CreateTodoResponse> HandleAsync(CreateTodoCommand command)
 | POST | `/api/todos/{id}/complete` | Mark todo as complete |
 | GET | `/api/todos` | List all todos |
 
-## Example Usage
-
-```bash
-# Create a todo
-curl -X POST http://localhost:5000/api/todos \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Learn event sourcing"}'
-
-# Complete a todo
-curl -X POST http://localhost:5000/api/todos/{id}/complete
-
-# List todos
-curl http://localhost:5000/api/todos
-```
-
 ## Adding a New Feature
 
+### Backend
 1. Create folder: `Features/MyFeature/`
-2. Add files:
-   - `Command.cs` (or `Query.cs` for reads)
-   - `Handler.cs`
-   - `Endpoint.cs`
-   - Events if needed (or put in Domain/)
-3. Register handler in `Program.cs`:
-   ```csharp
-   builder.Services.AddScoped<MyFeatureHandler>();
-   ```
-4. Map endpoint in `Program.cs`:
-   ```csharp
-   app.MapMyFeature();
-   ```
+2. Add `Command.cs`, `Handler.cs`, `Endpoint.cs`
+3. Register handler in `Program.cs`
+4. Map endpoint in `Program.cs`
+
+### Frontend
+1. Create folder: `features/my-feature/`
+2. Add component files
+3. Add method to `api.service.ts`
+4. Wire into app
 
 ## Using as a Template
 
@@ -118,20 +132,6 @@ dotnet new install ./
 # Create new project
 dotnet new fes-starter -n MyProject
 ```
-
-## Read Models
-
-The `ListTodos` feature includes a simple in-memory read model. In production:
-- Use a proper database (PostgreSQL, etc.)
-- Subscribe to events to update read models
-- Consider separate read/write databases (CQRS)
-
-## Future Enhancements
-
-- [ ] Angular frontend with matching vertical slices
-- [ ] Aspire orchestration
-- [ ] Event subscriptions for read model updates
-- [ ] Example tests
 
 ## License
 
