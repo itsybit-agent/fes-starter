@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FesStarter.Api/FesStarter.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FesStarter.Api.Tests/FesStarter.Api.Tests.csproj" />
+  </Folder>
+  <Project Path="../FileBasedEventStore/src/FileEventStore/FileEventStore.csproj" />
+</Solution>

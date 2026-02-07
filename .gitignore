@@ -1,0 +1,21 @@
+# Build results
+bin/
+obj/
+out/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Data
+data/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

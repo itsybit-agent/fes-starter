@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "itsyBIT",
+  "classifications": ["Web", "API", "Event Sourcing", "Aspire"],
+  "identity": "FileEventStore.Starter.VerticalSlice",
+  "name": "FileEventStore Vertical Slice Starter",
+  "shortName": "fes-starter",
+  "description": "A full-stack starter kit with vertical slices, FileEventStore, and Aspire orchestration",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "sourceName": "FesStarter",
+  "preferNameDirectory": true,
+  "symbols": {
+    "Framework": {
+      "type": "parameter",
+      "description": "The target framework for the project.",
+      "datatype": "choice",
+      "choices": [
+        {
+          "choice": "net10.0",
+          "description": "Target .NET 10"
+        }
+      ],
+      "replaces": "net10.0",
+      "defaultValue": "net10.0"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "exclude": [
+            "**/bin/**",
+            "**/obj/**",
+            "**/.git/**",
+            "**/node_modules/**"
+          ]
+        }
+      ]
+    }
+  ]
+}
