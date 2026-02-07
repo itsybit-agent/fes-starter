@@ -1,21 +1,32 @@
-// Shared types matching backend DTOs
-
-export interface CreateTodoCommand {
-  title: string;
+// Orders
+export interface PlaceOrderCommand {
+  productId: string;
+  quantity: number;
 }
 
-export interface CreateTodoResponse {
-  id: string;
+export interface PlaceOrderResponse {
+  orderId: string;
 }
 
-export interface TodoDto {
-  id: string;
-  title: string;
-  isCompleted: boolean;
-  createdAt: string;
-  completedAt: string | null;
+export interface OrderDto {
+  orderId: string;
+  productId: string;
+  quantity: number;
+  status: string;
+  placedAt: string;
+  shippedAt?: string;
 }
 
-export interface ListTodosResponse {
-  todos: TodoDto[];
+// Inventory
+export interface InitializeStockRequest {
+  productName: string;
+  initialQuantity: number;
+}
+
+export interface StockDto {
+  productId: string;
+  productName: string;
+  quantityOnHand: number;
+  quantityReserved: number;
+  availableQuantity: number;
 }

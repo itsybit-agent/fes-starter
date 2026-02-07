@@ -1,29 +1,38 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CreateTodoCommand, CreateTodoResponse, ListTodosResponse } from './api.types';
+import { PlaceOrderCommand, PlaceOrderResponse, OrderDto, InitializeStockRequest, StockDto } from './api.types';
 import { environment } from '../../environments/environment';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly baseUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
 
-  // CreateTodo feature
-  createTodo(command: CreateTodoCommand): Observable<CreateTodoResponse> {
-    return this.http.post<CreateTodoResponse>(`${this.baseUrl}/todos`, command);
+  // Orders
+  placeOrder(command: PlaceOrderCommand): Observable<PlaceOrderResponse> {
+    return this.http.post<PlaceOrderResponse>(`${this.baseUrl}/orders`, command);
   }
 
-  // CompleteTodo feature
-  completeTodo(id: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/todos/${id}/complete`, {});
+  shipOrder(orderId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/orders/${orderId}/ship`, {});
   }
 
-  // ListTodos feature
-  listTodos(): Observable<ListTodosResponse> {
-    return this.http.get<ListTodosResponse>(`${this.baseUrl}/todos`);
+  listOrders(): Observable<OrderDto[]> {
+    return this.http.get<OrderDto[]>(`${this.baseUrl}/orders`);
+  }
+
+  // Inventory
+  initializeStock(productId: string, request: InitializeStockRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/products/${productId}/stock`, request);
+  }
+
+  getStock(productId: string): Observable<StockDto> {
+    return this.http.get<StockDto>(`${this.baseUrl}/products/${productId}/stock`);
+  }
+
+  listStock(): Observable<StockDto[]> {
+    return this.http.get<StockDto[]>(`${this.baseUrl}/products/stock`);
   }
 }
