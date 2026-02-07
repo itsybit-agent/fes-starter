@@ -8,11 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <PackageReference Include="FileEventStore" Version="1.1.1" />
     <ProjectReference Include="..\FesStarter.ServiceDefaults\FesStarter.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\..\..\FileBasedEventStore\src\FileEventStore\FileEventStore.csproj" />
   </ItemGroup>
 
 </Project>
