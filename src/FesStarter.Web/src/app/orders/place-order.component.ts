@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { OrdersApi } from './orders.api';
 import { InventoryApi } from '../inventory/inventory.api';
 import { StockDto } from '../inventory/inventory.types';
+import { ToastService } from '../shared/toast.service';
 
 @Component({
   selector: 'app-place-order',
@@ -46,7 +47,8 @@ export class PlaceOrderComponent implements OnInit {
 
   constructor(
     private ordersApi: OrdersApi,
-    private inventoryApi: InventoryApi
+    private inventoryApi: InventoryApi,
+    private toast: ToastService
   ) {}
 
   ngOnInit() {
@@ -54,7 +56,10 @@ export class PlaceOrderComponent implements OnInit {
   }
 
   loadProducts() {
-    this.inventoryApi.listStock().subscribe(data => this.products.set(data));
+    this.inventoryApi.listStock().subscribe({
+      next: data => this.products.set(data),
+      error: err => this.toast.error('Failed to load products')
+    });
   }
 
   placeOrder() {
@@ -62,11 +67,15 @@ export class PlaceOrderComponent implements OnInit {
     this.ordersApi.placeOrder({
       productId: this.selectedProductId(),
       quantity: this.quantity()
-    }).subscribe(() => {
-      this.selectedProductId.set('');
-      this.quantity.set(1);
-      this.loadProducts();
-      this.orderPlaced.emit();
+    }).subscribe({
+      next: () => {
+        this.selectedProductId.set('');
+        this.quantity.set(1);
+        this.loadProducts();
+        this.orderPlaced.emit();
+        this.toast.success('Order placed successfully');
+      },
+      error: err => this.toast.error('Failed to place order')
     });
   }
 }
