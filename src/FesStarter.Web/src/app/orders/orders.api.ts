@@ -10,8 +10,13 @@ export class OrdersApi {
 
   constructor(private http: HttpClient) {}
 
-  placeOrder(command: PlaceOrderCommand): Observable<PlaceOrderResponse> {
-    return this.http.post<PlaceOrderResponse>(`${this.baseUrl}/orders`, command);
+  placeOrder(command: PlaceOrderCommand, idempotencyKey?: string): Observable<PlaceOrderResponse> {
+    const key = idempotencyKey || crypto.randomUUID();
+    return this.http.post<PlaceOrderResponse>(
+      `${this.baseUrl}/orders`,
+      command,
+      { headers: { 'Idempotency-Key': key } }
+    );
   }
 
   shipOrder(orderId: string): Observable<void> {

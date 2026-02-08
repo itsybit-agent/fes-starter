@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { OrdersApi } from './orders.api';
 import { OrderDto } from './orders.types';
+import { ToastService } from '../shared/toast.service';
 
 @Component({
   selector: 'app-order-list',
@@ -54,17 +55,29 @@ import { OrderDto } from './orders.types';
 export class OrderListComponent implements OnInit {
   orders = signal<OrderDto[]>([]);
 
-  constructor(private api: OrdersApi) {}
+  constructor(
+    private api: OrdersApi,
+    private toast: ToastService
+  ) {}
 
   ngOnInit() {
     this.loadOrders();
   }
 
   loadOrders() {
-    this.api.listOrders().subscribe(data => this.orders.set(data));
+    this.api.listOrders().subscribe({
+      next: data => this.orders.set(data),
+      error: err => this.toast.error('Failed to load orders')
+    });
   }
 
   shipOrder(orderId: string) {
-    this.api.shipOrder(orderId).subscribe(() => this.loadOrders());
+    this.api.shipOrder(orderId).subscribe({
+      next: () => {
+        this.loadOrders();
+        this.toast.success('Order shipped successfully');
+      },
+      error: err => this.toast.error('Failed to ship order')
+    });
   }
 }
