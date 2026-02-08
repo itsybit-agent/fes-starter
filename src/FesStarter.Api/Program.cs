@@ -1,5 +1,6 @@
 using FileEventStore;
 using FesStarter.Api.Infrastructure;
+using FesStarter.Core.Idempotency;
 using FesStarter.Events;
 using FesStarter.Orders;
 using FesStarter.Inventory;
@@ -22,10 +23,9 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(
 var dataPath = Path.Combine(builder.Environment.ContentRootPath, "data", "events");
 builder.Services.AddFileEventStore(dataPath);
 
-// Infrastructure - Distributed Tracing
+// Infrastructure - Distributed Tracing & Idempotency
 builder.Services.AddScoped<CorrelationContext>();
-builder.Services.AddMemoryCache();
-builder.Services.AddScoped<IIdempotencyService, InMemoryIdempotencyService>();
+builder.Services.AddIdempotency();
 
 // Infrastructure - Event Publishing (with correlation ID enrichment)
 builder.Services.AddScoped<MediatREventPublisher>();

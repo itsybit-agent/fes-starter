@@ -1,4 +1,5 @@
 using FileEventStore.Session;
+using FesStarter.Core.Idempotency;
 using FesStarter.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -7,8 +8,8 @@ namespace FesStarter.Orders;
 
 public record PlaceOrderCommand(string ProductId, int Quantity, string? IdempotencyKey = null) : IIdempotentCommand
 {
-    string IIdempotentCommand.IdempotencyKey =>
-        IdempotencyKey ?? Guid.NewGuid().ToString();
+    // Return empty string when null - generating a new Guid defeats the purpose of idempotency
+    string IIdempotentCommand.IdempotencyKey => IdempotencyKey ?? string.Empty;
 }
 
 public record PlaceOrderResponse(string OrderId);
@@ -37,15 +38,26 @@ public static class PlaceOrderEndpoint
         app.MapPost("/api/orders", async (
             HttpRequest request,
             PlaceOrderCommand command,
-            PlaceOrderHandler handler) =>
+            PlaceOrderHandler handler,
+            IIdempotencyService idempotencyService) =>
         {
-            // Extract idempotency key from headers if present
-            var idempotencyKey = request.Headers.TryGetValue("Idempotency-Key", out var value)
-                ? value.ToString()
-                : null;
+            // Extract idempotency key from headers
+            var idempotencyKey = request.GetIdempotencyKey();
             var commandWithKey = command with { IdempotencyKey = idempotencyKey };
 
-            var response = await handler.HandleAsync(commandWithKey);
+            // Execute with idempotency enforcement - cached results for duplicate requests
+            var response = await idempotencyService.GetOrExecuteAsync(
+                idempotencyKey ?? "",
+                () => handler.HandleAsync(commandWithKey),
+                ct: request.HttpContext.RequestAborted);
+
+            if (response is null)
+            {
+                return Results.Problem(
+                    detail: "Failed to place order.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
+
             return Results.Created($"/api/orders/{response.OrderId}", response);
         })
         .WithName("PlaceOrder")

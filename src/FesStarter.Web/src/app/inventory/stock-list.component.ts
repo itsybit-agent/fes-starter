@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { InventoryApi } from './inventory.api';
 import { StockDto } from './inventory.types';
+import { ToastService } from '../shared/toast.service';
 
 @Component({
   selector: 'app-stock-list',
@@ -43,13 +44,19 @@ import { StockDto } from './inventory.types';
 export class StockListComponent implements OnInit {
   stocks = signal<StockDto[]>([]);
 
-  constructor(private api: InventoryApi) {}
+  constructor(
+    private api: InventoryApi,
+    private toast: ToastService
+  ) {}
 
   ngOnInit() {
     this.loadStock();
   }
 
   loadStock() {
-    this.api.listStock().subscribe(data => this.stocks.set(data));
+    this.api.listStock().subscribe({
+      next: data => this.stocks.set(data),
+      error: err => this.toast.error('Failed to load stock levels')
+    });
   }
 }

@@ -1,6 +1,7 @@
 import { Component, signal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { InventoryApi } from './inventory.api';
+import { ToastService } from '../shared/toast.service';
 
 @Component({
   selector: 'app-add-product',
@@ -31,18 +32,25 @@ export class AddProductComponent {
 
   productAdded = output<void>();
 
-  constructor(private api: InventoryApi) {}
+  constructor(
+    private api: InventoryApi,
+    private toast: ToastService
+  ) {}
 
   addProduct() {
     if (!this.productId() || !this.productName()) return;
     this.api.initializeStock(this.productId(), {
       productName: this.productName(),
       initialQuantity: this.initialQuantity()
-    }).subscribe(() => {
-      this.productId.set('');
-      this.productName.set('');
-      this.initialQuantity.set(100);
-      this.productAdded.emit();
+    }).subscribe({
+      next: () => {
+        this.productId.set('');
+        this.productName.set('');
+        this.initialQuantity.set(100);
+        this.productAdded.emit();
+        this.toast.success('Product added successfully');
+      },
+      error: err => this.toast.error('Failed to add product')
     });
   }
 }
