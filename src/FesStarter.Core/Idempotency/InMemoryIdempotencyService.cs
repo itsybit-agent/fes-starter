@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -8,36 +9,16 @@ namespace FesStarter.Core.Idempotency;
 /// For production, use Redis or distributed cache.
 /// </summary>
 /// <remarks>
-/// ⚠️ RACE CONDITION: The current check-then-execute pattern is not atomic.
-/// Two simultaneous requests with the same key could both execute before caching.
-/// 
-/// For production, consider using a SemaphoreSlim per key:
-/// <code>
-/// private readonly ConcurrentDictionary&lt;string, SemaphoreSlim&gt; _locks = new();
-/// 
-/// var semaphore = _locks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
-/// await semaphore.WaitAsync(ct);
-/// try
-/// {
-///     // Check cache again after acquiring lock
-///     if (_cache.TryGetValue(cacheKey, out T? cached)) return cached;
-///     var result = await executor();
-///     _cache.Set(cacheKey, result, expiration);
-///     return result;
-/// }
-/// finally
-/// {
-///     semaphore.Release();
-/// }
-/// </code>
-/// 
-/// Or use Redis with SETNX for distributed locking.
+/// Uses SemaphoreSlim per key to prevent race conditions where multiple simultaneous
+/// requests with the same idempotency key could both execute the handler.
+/// Implements double-check locking pattern: check cache → acquire lock → check again.
 /// </remarks>
 public class InMemoryIdempotencyService : IIdempotencyService
 {
     private readonly IMemoryCache _cache;
     private readonly ILogger<InMemoryIdempotencyService> _logger;
     private readonly TimeSpan _defaultExpiration = TimeSpan.FromHours(24);
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
     public InMemoryIdempotencyService(IMemoryCache cache, ILogger<InMemoryIdempotencyService> logger)
     {
@@ -59,7 +40,7 @@ public class InMemoryIdempotencyService : IIdempotencyService
 
         var cacheKey = $"idempotency:{idempotencyKey}";
 
-        // Check if already cached
+        // First check: fast path for cache hits without locking
         if (_cache.TryGetValue(cacheKey, out T? cachedResult))
         {
             _logger.LogInformation(
@@ -68,18 +49,38 @@ public class InMemoryIdempotencyService : IIdempotencyService
             return cachedResult;
         }
 
-        // Execute and cache
-        _logger.LogDebug("Idempotency cache miss for key={Key}, executing handler", idempotencyKey);
-        var result = await executor();
+        // Get or create semaphore for this key
+        var semaphore = _locks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
 
-        var cacheExpiration = expiration ?? _defaultExpiration;
-        _cache.Set(cacheKey, result, cacheExpiration);
+        await semaphore.WaitAsync(ct);
+        try
+        {
+            // Second check: after acquiring lock, check cache again (double-check locking)
+            if (_cache.TryGetValue(cacheKey, out T? cachedAgain))
+            {
+                _logger.LogInformation(
+                    "Idempotency cache hit for key={Key} (after lock acquisition), returning cached result",
+                    idempotencyKey);
+                return cachedAgain;
+            }
 
-        _logger.LogInformation(
-            "Cached idempotent command result with key={Key}, expiration={Hours}h",
-            idempotencyKey,
-            cacheExpiration.TotalHours);
+            // Execute and cache
+            _logger.LogDebug("Idempotency cache miss for key={Key}, executing handler", idempotencyKey);
+            var result = await executor();
 
-        return result;
+            var cacheExpiration = expiration ?? _defaultExpiration;
+            _cache.Set(cacheKey, result, cacheExpiration);
+
+            _logger.LogInformation(
+                "Cached idempotent command result with key={Key}, expiration={Hours}h",
+                idempotencyKey,
+                cacheExpiration.TotalHours);
+
+            return result;
+        }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 }
