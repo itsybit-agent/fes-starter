@@ -58,7 +58,7 @@ mkdir -p src/{ProjectName}.Events/{ModuleName}
 ### 5. Add to solution
 
 ```bash
-dotnet sln add src/{ProjectName}.{ModuleName}
+dotnet sln add src/{ProjectName}.{ModuleName}/{ProjectName}.{ModuleName}.csproj
 ```
 
 ### 6. Reference from API
@@ -71,7 +71,7 @@ Edit `src/{ProjectName}.Api/{ProjectName}.Api.csproj`:
 ### 7. Register in Program.cs
 
 ```csharp
-builder.Services.Add{ModuleName}Module(builder.Configuration);
+builder.Services.Add{ModuleName}Module();
 app.Map{ModuleName}Endpoints();
 ```
 

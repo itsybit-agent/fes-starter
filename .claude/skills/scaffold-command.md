@@ -38,14 +38,19 @@ If new module, copy from `src/{ProjectName}.Orders/Features/PlaceOrder.cs`.
 Copy an existing event, create in `src/{ProjectName}.Events/{Module}/`:
 
 ```csharp
-// {CommandName}Events.cs
+// {Module}Events.cs (add to existing file or create new)
 namespace {ProjectName}.Events.{Module};
 
 public record {PastTense}(  // e.g., OrderCancelled
-    Guid {Entity}Id,
-    DateTimeOffset {PastTense}At
+    string {Entity}Id,
+    DateTime {PastTense}At
     // add relevant properties
-) : IDomainEvent;
+) : ICorrelatedEvent
+{
+    public string TimestampUtc { get; set; } = "";
+    public string CorrelationId { get; init; } = "";
+    public string? CausationId { get; init; }
+}
 ```
 
 ### 3. Create the feature file
@@ -53,52 +58,74 @@ public record {PastTense}(  // e.g., OrderCancelled
 Copy existing command, create `src/{ProjectName}.{Module}/Features/{CommandName}.cs`:
 
 ```csharp
-namespace {ProjectName}.{Module}.Features;
+using FileEventStore.Session;
+using {ProjectName}.Core.Idempotency;
+using {ProjectName}.Events;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+
+namespace {ProjectName}.{Module};
 
 // Command
 public record {CommandName}Command(
-    string IdempotencyKey,
-    Guid {Entity}Id
+    string {Entity}Id,
     // add properties
-) : IRequest<{CommandName}Result>, IIdempotentCommand;
+    string? IdempotencyKey = null
+) : IIdempotentCommand
+{
+    string IIdempotentCommand.IdempotencyKey => IdempotencyKey ?? string.Empty;
+}
 
-public record {CommandName}Result(bool Success, string? Error = null);
+public record {CommandName}Response(bool Success, string? Error = null);
 
 // Handler
-public class {CommandName}Handler : IRequestHandler<{CommandName}Command, {CommandName}Result>
+public class {CommandName}Handler(
+    IEventSessionFactory sessionFactory,
+    IEventPublisher eventPublisher)
 {
-    // inject IEventStore, IIdempotencyService, IEventPublisher
-    
-    public async Task<{CommandName}Result> Handle({CommandName}Command cmd, CancellationToken ct)
+    public async Task<{CommandName}Response> HandleAsync({CommandName}Command command)
     {
-        // 1. Check idempotency
-        // 2. Load aggregate
-        // 3. Call aggregate method
-        // 4. Save event
-        // 5. Publish event
-        // 6. Return result
+        await using var session = sessionFactory.OpenSession();
+        
+        var aggregate = await session.AggregateStreamAsync<{Entity}Aggregate>(command.{Entity}Id);
+        if (aggregate is null)
+            return new {CommandName}Response(false, "{Entity} not found");
+        
+        aggregate.{CommandName}();  // Call aggregate method
+        
+        var events = aggregate.UncommittedEvents.ToList();
+        await session.SaveChangesAsync();
+        await eventPublisher.PublishAsync(events);
+        
+        return new {CommandName}Response(true);
     }
 }
 
 // Endpoint
 public static class {CommandName}Endpoint
 {
-    public static async Task<IResult> Handle(
-        {CommandName}Request request,
-        IMediator mediator,
-        HttpContext context)
-    {
-        var cmd = new {CommandName}Command(
-            context.Request.Headers["Idempotency-Key"].FirstOrDefault() ?? "",
-            request.{Entity}Id
-        );
-        
-        var result = await mediator.Send(cmd);
-        return result.Success ? Results.Ok(result) : Results.BadRequest(result);
-    }
+    public static void Map(WebApplication app) =>
+        app.MapPost("/api/{entities}/{entityId}/{action}", async (
+            HttpRequest request,
+            string {entity}Id,
+            {CommandName}Handler handler,
+            IIdempotencyService idempotencyService) =>
+        {
+            var idempotencyKey = request.GetIdempotencyKey();
+            var command = new {CommandName}Command({entity}Id, IdempotencyKey: idempotencyKey);
+            
+            var response = await idempotencyService.GetOrExecuteAsync(
+                idempotencyKey ?? "",
+                () => handler.HandleAsync(command),
+                ct: request.HttpContext.RequestAborted);
+            
+            return response?.Success == true 
+                ? Results.Ok(response) 
+                : Results.BadRequest(response);
+        })
+        .WithName("{CommandName}")
+        .WithTags("{Module}");
 }
-
-public record {CommandName}Request(Guid {Entity}Id);
 ```
 
 ### 4. Add aggregate method (if needed)
@@ -109,7 +136,10 @@ In `src/{ProjectName}.{Module}/Domain/{Entity}Aggregate.cs`:
 public {PastTense} {CommandName}()
 {
     // validation
-    return new {PastTense}(Id, DateTimeOffset.UtcNow);
+    var evt = new {PastTense}(Id, DateTime.UtcNow);
+    Apply(evt);
+    AddUncommittedEvent(evt);
+    return evt;
 }
 
 // In Apply():
@@ -120,12 +150,16 @@ case {PastTense} e:
 
 ### 5. Wire into module
 
-In `{Module}Module.cs`, add to `Map{Module}Endpoints()`:
+In `{Module}Module.cs`, register handler and map endpoint:
 
 ```csharp
-group.MapPost("/{entityId}/{action}", {CommandName}Endpoint.Handle);
+// In Add{Module}Module():
+services.AddScoped<{CommandName}Handler>();
+
+// In Map{Module}Endpoints():
+{CommandName}Endpoint.Map(app);
 ```
 
 ## Reference
 
-Copy from existing commands in the module.
+Copy from existing commands in the module (e.g., `PlaceOrder.cs`).

@@ -17,9 +17,9 @@ Add a query (read operation) to an existing module.
 
 ## What It Creates
 
-- Query + Handler + Endpoint in `{ProjectName}.{Module}/Features/`
+- Query handler + Endpoint in `{ProjectName}.{Module}/Features/`
 - ReadModel (if needed)
-- Projection (if needed)
+- Projection handlers (if needed)
 - Wires into module endpoints
 
 ## Steps
@@ -31,121 +31,122 @@ Find `*.slnx` or `*.sln` — filename is the ProjectName.
 ### 1. Find a query to copy
 
 Look in `src/{ProjectName}.{Module}/Features/` for an existing query.
-If new module, copy from `src/{ProjectName}.Orders/Features/ListOrders.cs`.
+Copy from `src/{ProjectName}.Orders/Features/ListOrders.cs`.
 
 ### 2. Create the feature file
 
 Copy existing query, create `src/{ProjectName}.{Module}/Features/{QueryName}.cs`:
 
 ```csharp
-namespace {ProjectName}.{Module}.Features;
+using System.Collections.Concurrent;
+using FileEventStore;
+using {ProjectName}.Events;
+using {ProjectName}.Events.{Module};
+using MediatR;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Logging;
 
-// Query
-public record {QueryName}Query(
-    Guid? {Entity}Id = null  // optional filters
-) : IRequest<{QueryName}Result>;
+namespace {ProjectName}.{Module};
 
-public record {QueryName}Result(IReadOnlyList<{Entity}Dto> Items);
-
+// DTO
 public record {Entity}Dto(
-    Guid Id,
+    string {Entity}Id,
     string Status,
-    DateTimeOffset CreatedAt
+    DateTime CreatedAt
     // add properties
 );
 
-// ReadModel (in-memory projection)
-public class {QueryName}ReadModel
+// Read Model (in-memory projection)
+public class {Entity}ReadModel
 {
-    private readonly List<{Entity}Dto> _items = new();
-    
-    public IReadOnlyList<{Entity}Dto> Items => _items.AsReadOnly();
-    
-    public void Apply({Entity}Created e)
+    private readonly ConcurrentDictionary<string, {Entity}Dto> _items = new();
+
+    public void Apply(IStoreableEvent evt)
     {
-        _items.Add(new {Entity}Dto(e.{Entity}Id, "Created", e.CreatedAt));
-    }
-    
-    public void Apply({Entity}Updated e)
-    {
-        var item = _items.FirstOrDefault(x => x.Id == e.{Entity}Id);
-        if (item != null)
+        switch (evt)
         {
-            // update item
+            case {Entity}Created e:
+                _items[e.{Entity}Id] = new {Entity}Dto(e.{Entity}Id, "Created", e.CreatedAt);
+                break;
+            case {Entity}Updated e:
+                if (_items.TryGetValue(e.{Entity}Id, out var item))
+                    _items[e.{Entity}Id] = item with { Status = "Updated" };
+                break;
         }
+    }
+
+    public List<{Entity}Dto> GetAll() => _items.Values.ToList();
+    public {Entity}Dto? Get(string id) => _items.GetValueOrDefault(id);
+}
+
+// Projections (update read model when events occur)
+public class {Entity}ReadModelProjections(
+    {Entity}ReadModel readModel,
+    ILogger<{Entity}ReadModelProjections> logger) :
+    INotificationHandler<DomainEventNotification<{Entity}Created>>,
+    INotificationHandler<DomainEventNotification<{Entity}Updated>>
+{
+    public Task Handle(DomainEventNotification<{Entity}Created> notification, CancellationToken ct)
+    {
+        logger.LogDebug("Projecting {Entity}Created: {Id}", notification.DomainEvent.{Entity}Id);
+        readModel.Apply(notification.DomainEvent);
+        return Task.CompletedTask;
+    }
+
+    public Task Handle(DomainEventNotification<{Entity}Updated> notification, CancellationToken ct)
+    {
+        logger.LogDebug("Projecting {Entity}Updated: {Id}", notification.DomainEvent.{Entity}Id);
+        readModel.Apply(notification.DomainEvent);
+        return Task.CompletedTask;
     }
 }
 
 // Handler
-public class {QueryName}Handler : IRequestHandler<{QueryName}Query, {QueryName}Result>
+public class {QueryName}Handler({Entity}ReadModel readModel)
 {
-    private readonly {QueryName}ReadModel _readModel;
+    public Task<List<{Entity}Dto>> HandleAsync() => Task.FromResult(readModel.GetAll());
     
-    public {QueryName}Handler({QueryName}ReadModel readModel)
-    {
-        _readModel = readModel;
-    }
-    
-    public Task<{QueryName}Result> Handle({QueryName}Query query, CancellationToken ct)
-    {
-        var items = _readModel.Items;
-        
-        if (query.{Entity}Id.HasValue)
-            items = items.Where(x => x.Id == query.{Entity}Id.Value).ToList();
-        
-        return Task.FromResult(new {QueryName}Result(items));
-    }
+    public Task<{Entity}Dto?> HandleAsync(string id) => Task.FromResult(readModel.Get(id));
 }
 
 // Endpoint
 public static class {QueryName}Endpoint
 {
-    public static async Task<IResult> Handle(
-        IMediator mediator,
-        Guid? {entity}Id = null)
+    public static void Map(WebApplication app)
     {
-        var query = new {QueryName}Query({entity}Id);
-        var result = await mediator.Send(query);
-        return Results.Ok(result);
+        app.MapGet("/api/{entities}", async ({QueryName}Handler handler) =>
+            Results.Ok(await handler.HandleAsync()))
+            .WithName("{QueryName}")
+            .WithTags("{Module}");
+
+        app.MapGet("/api/{entities}/{{id}}", async (string id, {QueryName}Handler handler) =>
+        {
+            var item = await handler.HandleAsync(id);
+            return item is not null ? Results.Ok(item) : Results.NotFound();
+        })
+        .WithName("Get{Entity}")
+        .WithTags("{Module}");
     }
 }
 ```
 
-### 3. Register ReadModel
+### 3. Register in module
 
-In `{Module}Module.cs`, `Add{Module}Module()`:
-
-```csharp
-services.AddSingleton<{QueryName}ReadModel>();
-```
-
-### 4. Add projection handler
-
-Create event handler to update the read model:
+In `{Module}Module.cs`:
 
 ```csharp
-public class {QueryName}Projector : 
-    INotificationHandler<DomainEventNotification<{Entity}Created>>
-{
-    private readonly {QueryName}ReadModel _readModel;
-    
-    public Task Handle(DomainEventNotification<{Entity}Created> notification, CancellationToken ct)
-    {
-        _readModel.Apply(notification.Event);
-        return Task.CompletedTask;
-    }
-}
+// In Add{Module}Module():
+services.AddSingleton<{Entity}ReadModel>();
+services.AddScoped<{QueryName}Handler>();
+
+// In Map{Module}Endpoints():
+{QueryName}Endpoint.Map(app);
 ```
 
-### 5. Wire into module
+### 4. Initialize read model (optional)
 
-In `{Module}Module.cs`, add to `Map{Module}Endpoints()`:
-
-```csharp
-group.MapGet("/", {QueryName}Endpoint.Handle);
-// or
-group.MapGet("/{entityId}", {QueryName}Endpoint.Handle);
-```
+If you need to rebuild read model from existing events on startup,
+add a hosted service or use `ReadModelInitializer` pattern from the Api project.
 
 ## Reference
 

@@ -38,56 +38,54 @@ Example: `ReserveStockOnOrderPlaced.cs`
 Copy existing automation, create `src/{ProjectName}.{Module}/Features/{HandlerName}.cs`:
 
 ```csharp
-namespace {ProjectName}.{Module}.Features;
+using FileEventStore.Session;
+using {ProjectName}.Events;
+using {ProjectName}.Events.{SourceModule};
+using MediatR;
+using Microsoft.Extensions.Logging;
+
+namespace {ProjectName}.{Module};
 
 /// <summary>
 /// {description}
 /// Reacts to: {SourceEvent} from {SourceModule}
 /// Emits: {ResultEvent} (if applicable)
 /// </summary>
-public class {HandlerName} : INotificationHandler<DomainEventNotification<{SourceEvent}>>
+public class {HandlerName}Handler(
+    IEventSessionFactory sessionFactory,
+    IEventPublisher eventPublisher,
+    ILogger<{HandlerName}Handler> logger) :
+    INotificationHandler<DomainEventNotification<{SourceEvent}>>
 {
-    private readonly IEventStore _eventStore;
-    private readonly IEventPublisher _publisher;
-    private readonly ILogger<{HandlerName}> _logger;
-    
-    public {HandlerName}(
-        IEventStore eventStore,
-        IEventPublisher publisher,
-        ILogger<{HandlerName}> logger)
-    {
-        _eventStore = eventStore;
-        _publisher = publisher;
-        _logger = logger;
-    }
-    
     public async Task Handle(
-        DomainEventNotification<{SourceEvent}> notification, 
+        DomainEventNotification<{SourceEvent}> notification,
         CancellationToken ct)
     {
-        var sourceEvent = notification.Event;
+        var evt = notification.DomainEvent;
         
-        _logger.LogInformation(
-            "{Handler} reacting to {Event}", 
-            nameof({HandlerName}), 
-            sourceEvent.GetType().Name);
+        logger.LogInformation(
+            "{Handler} reacting to {Event} for {EntityId}",
+            nameof({HandlerName}Handler),
+            nameof({SourceEvent}),
+            evt.{EntityId});
         
-        // 1. Load aggregate (if needed)
-        var streamId = $"{entity}-{sourceEvent.EntityId}";
-        var aggregate = await _eventStore.AggregateStreamAsync<{Entity}Aggregate>(
-            streamId, ct) ?? new {Entity}Aggregate();
+        await using var session = sessionFactory.OpenSession();
         
-        // 2. Perform action
-        var resultEvent = aggregate.DoSomething(sourceEvent);
+        // Load aggregate
+        var aggregate = await session.AggregateStreamAsync<{Entity}Aggregate>(evt.{EntityId});
+        if (aggregate is null)
+        {
+            logger.LogWarning("No {Entity} found for {EntityId}", evt.{EntityId});
+            return;
+        }
         
-        // 3. Save event
-        if (aggregate.Version == 0)
-            await _eventStore.StartStreamAsync(streamId, resultEvent, ct: ct);
-        else
-            await _eventStore.AppendToStreamAsync(streamId, resultEvent, ct: ct);
+        // Perform action
+        aggregate.DoSomething(evt);
         
-        // 4. Publish for other handlers
-        await _publisher.PublishAsync(resultEvent, ct);
+        // Save and publish
+        var events = aggregate.UncommittedEvents.ToList();
+        await session.SaveChangesAsync();
+        await eventPublisher.PublishAsync(events, ct);
     }
 }
 ```
@@ -115,29 +113,36 @@ Make sure the module references the events project:
 ### 5. Handler is auto-registered
 
 MediatR scans for `INotificationHandler<>` implementations.
-No manual registration needed.
+No manual registration needed — just make sure `AddMediatR()` scans the assembly.
 
 ## Patterns
 
-### Simple translation (emit event in response)
+### Translation (emit event in response to another)
 ```csharp
 // OrderPlaced → StockReserved
-var reserved = aggregate.ReserveStock(sourceEvent.ProductId, sourceEvent.Quantity);
-await _eventStore.AppendToStreamAsync(streamId, reserved, ct: ct);
-await _publisher.PublishAsync(reserved, ct);
+var aggregate = await session.AggregateStreamAsync<ProductStockAggregate>(evt.ProductId);
+aggregate.Reserve(evt.Quantity, evt.OrderId);
+
+var events = aggregate.UncommittedEvents.ToList();
+await session.SaveChangesAsync();
+await eventPublisher.PublishAsync(events, ct);
 ```
 
-### Update state only (no new event)
+### Update state only
 ```csharp
-// StockReserved → Update OrderAggregate status
-var marked = aggregate.MarkAsReserved();
-await _eventStore.AppendToStreamAsync(streamId, marked, ct: ct);
+// StockReserved → Mark order as reserved
+var order = await session.AggregateStreamAsync<OrderAggregate>(evt.OrderId);
+order.MarkAsReserved();
+
+var events = order.UncommittedEvents.ToList();
+await session.SaveChangesAsync();
+await eventPublisher.PublishAsync(events, ct);
 ```
 
 ### Side effect only (external call)
 ```csharp
-// OrderShipped → Send email
-await _emailService.SendAsync(sourceEvent.CustomerEmail, "Your order shipped!");
+// OrderShipped → Send email (no aggregate, no events)
+await _emailService.SendAsync(evt.CustomerEmail, "Your order shipped!");
 // Consider outbox pattern for reliability
 ```
 

@@ -5,10 +5,7 @@ Event-Sourced Modular Monolith Starter with CQRS, Vertical Slices, and Angular.
 ## Installation
 
 ```bash
-# Install template (once)
-dotnet new install itsybit-agent/fes-starter
-
-# Or from local clone
+# Clone and install template
 git clone https://github.com/itsybit-agent/fes-starter.git
 dotnet new install ./fes-starter
 ```
