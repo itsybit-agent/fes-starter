@@ -1,6 +1,6 @@
 # scaffold-feature
 
-Add a new feature to an existing fes-starter project.
+Add a new feature to this project.
 
 ## Usage
 
@@ -13,6 +13,10 @@ Add a {FeatureName} feature to the {Context} module: {description}
 **Don't generate from scratch. Copy existing patterns.**
 
 ## Steps
+
+### 0. Detect project name
+
+Find `*.slnx` or `*.sln` in project root. The filename is the ProjectName.
 
 ### 1. Find the template
 
