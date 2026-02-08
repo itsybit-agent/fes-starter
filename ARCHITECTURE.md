@@ -399,21 +399,27 @@ builder.Services.AddScoped<IIdempotencyService, RedisIdempotencyService>();
 
 ## Stream ID Generation (Automatic)
 
-The FileEventStore library automatically generates stream IDs:
+The FileEventStore library automatically generates stream IDs from the aggregate type and identifier:
 
 ```csharp
-// You don't need to specify stream ID format
-var order = await session.AggregateStreamOrCreateAsync<OrderAggregate>($"order-{orderId}");
-// Behind the scenes: Stream ID = "OrderAggregate-order-123"
+// Pass just the identifier - library handles the stream ID
+var orderId = Guid.NewGuid().ToString();  // e.g., "abc-123"
+var order = await session.AggregateStreamOrCreateAsync<OrderAggregate>(orderId);
+// Behind the scenes: Stream ID = "OrderAggregate-abc-123"
 
-var stock = await session.AggregateStreamOrCreateAsync<ProductStockAggregate>($"product-456");
+var productId = "product-456";
+var stock = await session.AggregateStreamOrCreateAsync<ProductStockAggregate>(productId);
 // Behind the scenes: Stream ID = "ProductStockAggregate-product-456"
+
+// Loading: Use same identifier, library handles the prefix
+var loaded = await session.AggregateStreamAsync<OrderAggregate>(orderId);
 ```
 
 **The pattern is automatic:**
-- Aggregate type name + identifier → unique stream ID
+- Aggregate type + identifier → unique stream ID automatically
 - Prevents collisions (Order and Stock with same ID are different streams)
-- No manual stream ID construction needed
+- Don't manually add prefixes - let the library generate them
+- Load with the same identifier you created with
 
 ---
 
