@@ -11,7 +11,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
 // MediatR for event publishing and translations
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+// Register handlers from API, Orders, and Inventory assemblies
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(
+    typeof(Program).Assembly,
+    typeof(OrderAggregate).Assembly,
+    typeof(ProductStockAggregate).Assembly
+));
 
 // FileEventStore
 var dataPath = Path.Combine(builder.Environment.ContentRootPath, "data", "events");
