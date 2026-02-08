@@ -10,8 +10,13 @@ export class InventoryApi {
 
   constructor(private http: HttpClient) {}
 
-  initializeStock(productId: string, request: InitializeStockRequest): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/products/${productId}/stock`, request);
+  initializeStock(productId: string, request: InitializeStockRequest, idempotencyKey?: string): Observable<void> {
+    const key = idempotencyKey || crypto.randomUUID();
+    return this.http.post<void>(
+      `${this.baseUrl}/products/${productId}/stock`,
+      request,
+      { headers: { 'Idempotency-Key': key } }
+    );
   }
 
   getStock(productId: string): Observable<StockDto> {

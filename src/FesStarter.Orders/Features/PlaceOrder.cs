@@ -1,4 +1,5 @@
 using FileEventStore.Session;
+using FesStarter.Core.Idempotency;
 using FesStarter.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -37,16 +38,19 @@ public static class PlaceOrderEndpoint
         app.MapPost("/api/orders", async (
             HttpRequest request,
             PlaceOrderCommand command,
-            PlaceOrderHandler handler) =>
+            PlaceOrderHandler handler,
+            IIdempotencyService idempotencyService) =>
         {
-            // Extract idempotency key from headers if present
-            var idempotencyKey = request.Headers.TryGetValue("Idempotency-Key", out var value)
-                ? value.ToString()
-                : null;
+            // Extract idempotency key from headers
+            var idempotencyKey = request.GetIdempotencyKey();
             var commandWithKey = command with { IdempotencyKey = idempotencyKey };
 
-            var response = await handler.HandleAsync(commandWithKey);
-            return Results.Created($"/api/orders/{response.OrderId}", response);
+            // Execute with idempotency enforcement - cached results for duplicate requests
+            var response = await idempotencyService.GetOrExecuteAsync(
+                idempotencyKey ?? "",
+                () => handler.HandleAsync(commandWithKey));
+
+            return Results.Created($"/api/orders/{response?.OrderId}", response);
         })
         .WithName("PlaceOrder")
         .WithTags("Orders");
