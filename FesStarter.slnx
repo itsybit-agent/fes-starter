@@ -2,9 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/FesStarter.Api/FesStarter.Api.csproj" />
     <Project Path="src/FesStarter.AppHost/FesStarter.AppHost.csproj" />
+    <Project Path="src/FesStarter.Core/FesStarter.Core.csproj" />
     <Project Path="src/FesStarter.Events/FesStarter.Events.csproj" />
-    <Project Path="src/FesStarter.Orders/FesStarter.Orders.csproj" />
     <Project Path="src/FesStarter.Inventory/FesStarter.Inventory.csproj" />
+    <Project Path="src/FesStarter.Orders/FesStarter.Orders.csproj" />
     <Project Path="src/FesStarter.ServiceDefaults/FesStarter.ServiceDefaults.csproj" />
     <Project Path="src/FesStarter.Web/" Type="Website" DisplayName="FesStarter.Web">
       <BuildType Project="Debug" />
