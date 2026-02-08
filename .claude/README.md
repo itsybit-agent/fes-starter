@@ -1,6 +1,6 @@
-# FesStarter Claude Code Skills
+# Claude Code Skills
 
-This directory contains Claude Code skills and instructions for scaffolding FesStarter features.
+This directory contains Claude Code skills and instructions for scaffolding features in any CQRS + Event Sourcing project.
 
 ## Quick Start
 
@@ -9,12 +9,17 @@ This directory contains Claude Code skills and instructions for scaffolding FesS
 When you want to generate a complete feature, use:
 
 ```
-/scaffold-fes-feature {Context} {Feature} {Description}
+/scaffold-feature {Context} {Feature} {Description}
 ```
 
-**Example:**
+**Examples:**
 ```
-/scaffold-fes-feature Orders PlaceOrder "Create a new order for a product"
+# Auto-detects project name from .sln/.csproj
+/scaffold-feature Orders PlaceOrder "Create a new order for a product"
+
+# Or specify project name explicitly
+/scaffold-feature Payments ProcessRefund "Process refund" --project-name MyCompany
+/scaffold-feature Inventory AdjustStock "Adjust stock" --project-name Acme
 ```
 
 ### What It Generates
@@ -22,8 +27,8 @@ When you want to generate a complete feature, use:
 The skill creates:
 
 **Backend (.NET)**
-- Domain event(s) in `FesStarter.Events/`
-- Aggregate method in `FesStarter.{Context}/`
+- Domain event(s) in `src/{ProjectName}.Events/`
+- Aggregate method in `src/{ProjectName}.{Context}/`
 - Complete feature file with command, handler, read model, endpoint
 - Module registration updates
 - Integration tests
@@ -43,10 +48,11 @@ The skill creates:
 
 | File | Purpose |
 |------|---------|
-| `skills/scaffold-fes-feature.md` | Skill definition and metadata |
+| `skills/scaffold-feature.md` | Skill definition and metadata (generic) |
 | `scaffold-implementation.md` | Technical details of what gets generated |
 | `scaffold-prompt.md` | Claude prompt instructions (used internally) |
 | `skill-example.md` | Real example: RefundOrder feature |
+| `SKILL_ARCHITECTURE.md` | Flow diagram & integration patterns |
 | `README.md` | This file |
 
 ## How to Use
@@ -56,71 +62,102 @@ The skill creates:
 If you have Claude Code set up locally:
 
 ```bash
-claude code /scaffold-fes-feature Orders PlaceOrder "Create a new order"
+claude code /scaffold-feature Orders PlaceOrder "Create a new order"
 ```
 
 ### From Claude Web Interface
 
-When working with a FesStarter project:
+When working with any CQRS + Event Sourcing project:
 
 ```
-/scaffold-fes-feature Payments ProcessRefund "Process refund for an order"
+/scaffold-feature Payments ProcessRefund "Process refund for an order"
+/scaffold-feature Inventory AdjustStock "Adjust stock" --project-name MyApp
 ```
 
 ### From Any Machine
 
 The skill is stored in the repository, so:
 
-1. Clone FesStarter
+1. Clone the project
 2. Ask Claude to scaffold a feature
-3. It automatically references the skill definition
+3. It automatically detects your project name and applies the skill
 
 ## Examples
 
-### Example 1: Create Order Feature
+### Example 1: Create Order Feature (Auto-Detect)
 ```
-/scaffold-fes-feature Orders PlaceOrder "Create a new order with product and quantity"
-```
-
-Generates:
-- `OrderPlaced` event
-- `PlaceOrder` command + handler + endpoint
-- `PlaceOrderComponent` with form
-- Integration tests
-- All wiring updated
-
-### Example 2: Create Payment Feature
-```
-/scaffold-fes-feature Payments ProcessPayment "Process payment for an order"
+/scaffold-feature Orders PlaceOrder "Create a new order with product and quantity"
 ```
 
-Generates:
-- `PaymentProcessed` event
-- `ProcessPayment` command + handler
-- `PaymentComponent` with form
-- Tests for success and failure cases
-- Module registration
+Detects project name from `.sln` or `.csproj` (e.g., `MyApp`) and generates:
+- `src/MyApp.Events/Orders/PlaceOrderEvents.cs`
+- `src/MyApp.Orders/Features/PlaceOrder.cs`
+- `src/MyApp.Web/src/app/orders/place-order.api.ts`
+- `src/MyApp.Web/src/app/orders/place-order.component.ts`
+- `tests/MyApp.Api.Tests/PlaceOrderTests.cs`
+
+### Example 2: Create Payment Feature (Explicit Name)
+```
+/scaffold-feature Payments ProcessPayment "Process payment for an order" --project-name Acme
+```
+
+Explicitly uses `Acme` as project name and generates:
+- `src/Acme.Events/Payments/ProcessPaymentEvents.cs`
+- `src/Acme.Payments/Features/ProcessPayment.cs`
+- Full Angular component with error handling
+- Tests and module registration
 
 ### Example 3: Create Shipping Feature
 ```
-/scaffold-fes-feature Shipping ShipOrder "Ship an order to customer"
+/scaffold-feature Shipping ShipOrder "Ship an order to customer" --project-name Logistics
 ```
 
-Generates:
-- `OrderShipped` event
-- `ShipOrder` command + handler
-- `ShipOrderComponent`
-- Cross-context event handling setup
+Generates complete feature in `Logistics` project namespace with all integration
+
+## For Different Machines
+
+### Same Team
+```bash
+# Clone your project (any CQRS + Event Sourcing project)
+git clone https://github.com/myteam/MyProject.git
+cd MyProject
+
+# Use the skill immediately (auto-detects project name)
+/scaffold-feature Orders PlaceOrder "..."
+```
+
+### Different Project
+```bash
+# Clone another project with different naming
+git clone https://github.com/otherteam/DifferentProject.git
+cd DifferentProject
+
+# Skill works the same way - auto-detects "DifferentProject"
+/scaffold-feature Payments ProcessRefund "..."
+```
+
+### Custom Project Name
+```bash
+# If auto-detection fails or you want to override:
+/scaffold-feature Inventory AdjustStock "..." --project-name MyCompany
+```
+
+### Remote Team
+Everyone who clones a project with `.claude/` directory gets access to:
+- All skill definitions (generic, no hardcoded names)
+- SCAFFOLDING.md documentation
+- Code examples
+- Full instructions
 
 ## Understanding the Generated Code
 
-All generated features follow FesStarter patterns:
+All generated features follow CQRS + Event Sourcing patterns:
 
 ### Backend Pattern
 ```
 Event → Aggregate Logic → Command → Handler → Endpoint
          ↓
-      Event Stream (FileEventStore)
+      Event Stream
          ↓
     Read Model (Singleton)
          ↓
@@ -148,9 +185,9 @@ After scaffolding, you typically:
 ## Troubleshooting
 
 ### "Skill not found"
-Ensure you're in a FesStarter project:
+Ensure you're in a project with `.claude/skills/` directory:
 ```bash
-ls .claude/skills/scaffold-fes-feature.md
+ls .claude/skills/scaffold-feature.md
 ```
 
 ### "Generated code won't build"
@@ -162,32 +199,6 @@ ls .claude/skills/scaffold-fes-feature.md
 1. Check routes are registered in `{context}.routes.ts`
 2. Verify `ToastComponent` is in root app
 3. Check `ToastService` is imported
-
-## For Different Machines
-
-### Same Team
-```bash
-# Clone FesStarter
-git clone https://github.com/itsybit-agent/fes-starter.git MyProject
-
-# Use the skill immediately
-/scaffold-fes-feature Orders PlaceOrder "..."
-```
-
-### Different Project (Starting Fresh)
-```bash
-# Reference the skill documentation
-# https://raw.githubusercontent.com/itsybit-agent/fes-starter/master/.claude/skills/scaffold-fes-feature.md
-
-# Or copy SCAFFOLDING.md and reference patterns manually
-```
-
-### Remote Team
-Everyone who clones FesStarter gets access to:
-- All skill definitions
-- SCAFFOLDING.md documentation
-- Real code examples (Orders, Inventory)
-- This README
 
 ## Creating New Skills
 
@@ -210,4 +221,4 @@ To extend with new skills:
 
 - **Architecture**: See `CLAUDE.md` in project root
 - **Detailed Patterns**: See `SCAFFOLDING.md` in project root
-- **Real Examples**: See `src/FesStarter.Orders/` and `src/FesStarter.Inventory/`
+- **Skill System**: See `.claude/` directory

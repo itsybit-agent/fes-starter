@@ -1,11 +1,13 @@
-# scaffold-fes-feature
+# scaffold-feature
 
-Scaffolds a complete new feature in FesStarter following CQRS + Event Sourcing patterns.
+Scaffolds a complete new feature following CQRS + Event Sourcing patterns.
+
+Works with any project structure - just specify your naming convention!
 
 ## Usage
 
 ```
-/scaffold-fes-feature {context} {feature} {description}
+/scaffold-feature {context} {feature} {description} --project-name {ProjectName}
 ```
 
 ## Parameters
@@ -13,18 +15,19 @@ Scaffolds a complete new feature in FesStarter following CQRS + Event Sourcing p
 - **context**: The bounded context name (e.g., `Orders`, `Inventory`, `Payments`)
 - **feature**: The feature name in PascalCase (e.g., `PlaceOrder`, `AdjustStock`)
 - **description**: One-line description of what the feature does
+- **--project-name**: (Optional) Root namespace prefix. Defaults to detected name from solution
 
 ## Examples
 
 ```
-/scaffold-fes-feature Orders PlaceOrder "Create a new order for a product"
-/scaffold-fes-feature Payments ProcessRefund "Process a refund for an order"
-/scaffold-fes-feature Inventory AdjustStock "Adjust stock quantity for a product"
+/scaffold-feature Orders PlaceOrder "Create a new order for a product"
+/scaffold-feature Payments ProcessRefund "Process a refund for an order" --project-name Acme
+/scaffold-feature Inventory AdjustStock "Adjust stock quantity for a product" --project-name MyApp
 ```
 
 ## What It Does
 
-1. **Creates Event** - Domain event in `FesStarter.Events/{Context}/`
+1. **Creates Event** - Domain event in `{ProjectName}.Events/{Context}/`
 2. **Creates Aggregate Method** - Domain logic in aggregate
 3. **Creates Feature** - Command/handler/endpoint in single file
 4. **Creates Frontend** - API service and component
@@ -35,8 +38,8 @@ Scaffolds a complete new feature in FesStarter following CQRS + Event Sourcing p
 
 ```
 Backend:
-  FesStarter.Events/{Context}/{Feature}Events.cs
-  FesStarter.{Context}/Features/{Feature}.cs
+  {ProjectName}.Events/{Context}/{Feature}Events.cs
+  {ProjectName}.{Context}/Features/{Feature}.cs
 
 Frontend:
   src/app/{context}/{feature}.api.ts
@@ -44,17 +47,17 @@ Frontend:
   src/app/{context}/{feature}.types.ts
 
 Tests:
-  tests/FesStarter.Api.Tests/{Feature}Tests.cs
+  tests/{ProjectName}.Api.Tests/{Feature}Tests.cs
 
 Updated:
-  FesStarter.{Context}/{Context}Module.cs
+  {ProjectName}.{Context}/{Context}Module.cs
   src/app/{context}/{context}.routes.ts
 ```
 
 ## Requirements
 
-- Project follows FesStarter architecture (CLAUDE.md, SCAFFOLDING.md)
-- FileEventStore, MediatR, Angular 19+ setup already in place
+- Project follows CQRS + Event Sourcing patterns
+- FileEventStore, MediatR, Angular 19+ setup in place
 - ToastService available for error handling
 
 ## Conventions
@@ -66,6 +69,13 @@ Updated:
 - DTOs named `{Feature}Dto`
 - Angular components named `{feature}.component.ts`
 - All commands are idempotent with `IIdempotencyService`
+
+## Project Name Detection
+
+Skill automatically detects project name from:
+1. `{ProjectName}.sln` or `{ProjectName}.slnx` file
+2. First `{ProjectName}.*.csproj` found
+3. Falls back to `--project-name` parameter
 
 ## Reference
 

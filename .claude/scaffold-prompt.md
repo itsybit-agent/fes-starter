@@ -1,14 +1,25 @@
-# Claude Code Skill: Scaffold FesStarter Feature
+# Claude Code Skill: Scaffold Feature
 
 ## System Instructions
 
-When a user invokes `/scaffold-fes-feature {context} {feature} {description}`, follow these steps:
+When a user invokes `/scaffold-feature {context} {feature} {description} [--project-name {ProjectName}]`, follow these steps:
 
 ### Step 1: Parse Input
 Extract:
 - **Context**: Bounded context name (e.g., Orders, Inventory, Payments)
 - **Feature**: Feature name in PascalCase (e.g., PlaceOrder, AdjustStock)
 - **Description**: One-line feature description
+- **ProjectName**: (Optional) Root namespace. Auto-detect from .sln/.csproj if not provided
+
+Example mappings:
+```
+User: /scaffold-feature Orders PlaceOrder "..."
+Project Detection: Look for {Name}.sln or {Name}.Orders.csproj
+Result: ProjectName = "MyCompany" or "Acme" or auto-detected
+
+User: /scaffold-feature Orders PlaceOrder "..." --project-name Acme
+Result: ProjectName = "Acme"
+```
 
 ### Step 2: Read Reference Files
 1. Read `SCAFFOLDING.md` for patterns
@@ -16,10 +27,10 @@ Extract:
 3. Check existing context in `FesStarter.{Context}/` for patterns
 
 ### Step 3: Generate Events
-**File:** `src/FesStarter.Events/{Context}/{Feature}Events.cs`
+**File:** `src/{ProjectName}.Events/{Context}/{Feature}Events.cs`
 
 ```csharp
-namespace FesStarter.Events.{Context};
+namespace {ProjectName}.Events.{Context};
 
 public record {Feature}Started(
     string Id,
@@ -40,7 +51,7 @@ public record {Feature}Completed(
 ```
 
 ### Step 4: Generate Aggregate Logic
-**File:** `src/FesStarter.{Context}/{Aggregate}.cs` (append to existing)
+**File:** `src/{ProjectName}.{Context}/{Aggregate}.cs` (append to existing)
 
 Add method to aggregate:
 ```csharp
@@ -61,7 +72,7 @@ private void ApplyEvent({Feature}Started evt)
 ```
 
 ### Step 5: Generate Feature File
-**File:** `src/FesStarter.{Context}/Features/{Feature}.cs`
+**File:** `src/{ProjectName}.{Context}/Features/{Feature}.cs`
 
 Include all of:
 1. **Command** (with IIdempotentCommand)
@@ -120,7 +131,7 @@ export class {Feature}Component {
 
 ### Step 7: Update Module
 
-**File:** `src/FesStarter.{Context}/{Context}Module.cs`
+**File:** `src/{ProjectName}.{Context}/{Context}Module.cs`
 
 Add to `Add{Context}Module()`:
 ```csharp
@@ -148,7 +159,7 @@ Add route:
 
 ### Step 9: Generate Tests
 
-**File:** `tests/FesStarter.Api.Tests/{Feature}Tests.cs`
+**File:** `tests/{ProjectName}.Api.Tests/{Feature}Tests.cs`
 
 ```csharp
 [Fact]
@@ -180,7 +191,7 @@ public async Task {Feature}_WithInvalidData_ThrowsException()
 
 1. **Build Backend**
    ```bash
-   dotnet build src/FesStarter.Api/
+   dotnet build src/{ProjectName}.Api/
    ```
 
 2. **Build Frontend**
@@ -190,7 +201,7 @@ public async Task {Feature}_WithInvalidData_ThrowsException()
 
 3. **Run Tests**
    ```bash
-   dotnet test tests/FesStarter.Api.Tests/ -v minimal
+   dotnet test tests/{ProjectName}.Api.Tests/ -v minimal
    ```
 
 ### Step 11: Summary Output
@@ -200,15 +211,15 @@ Provide user with:
 ✅ Scaffolding Complete: {Feature}
 
 Generated Files:
-  ✓ FesStarter.Events/{Context}/{Feature}Events.cs
-  ✓ FesStarter.{Context}/Features/{Feature}.cs
-  ✓ src/FesStarter.Web/src/app/{context}/{feature}.api.ts
-  ✓ src/FesStarter.Web/src/app/{context}/{feature}.component.ts
-  ✓ tests/FesStarter.Api.Tests/{Feature}Tests.cs
+  ✓ src/{ProjectName}.Events/{Context}/{Feature}Events.cs
+  ✓ src/{ProjectName}.{Context}/Features/{Feature}.cs
+  ✓ src/{ProjectName}.Web/src/app/{context}/{feature}.api.ts
+  ✓ src/{ProjectName}.Web/src/app/{context}/{feature}.component.ts
+  ✓ tests/{ProjectName}.Api.Tests/{Feature}Tests.cs
 
 Updated:
-  ✓ FesStarter.{Context}/{Context}Module.cs
-  ✓ src/FesStarter.Web/src/app/{context}/{context}.routes.ts
+  ✓ src/{ProjectName}.{Context}/{Context}Module.cs
+  ✓ src/{ProjectName}.Web/src/app/{context}/{context}.routes.ts
 
 Build Status: ✅ Success
 
