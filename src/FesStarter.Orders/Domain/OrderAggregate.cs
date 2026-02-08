@@ -28,7 +28,7 @@ public class OrderAggregate : Aggregate
         if (Status != OrderStatus.Placed)
             throw new InvalidOperationException($"Cannot ship order in status {Status}");
 
-        Emit(new OrderShipped(Id, DateTime.UtcNow));
+        Emit(new OrderShipped(Id, ProductId, Quantity, DateTime.UtcNow));
     }
 
     public void MarkReserved()

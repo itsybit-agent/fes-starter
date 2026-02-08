@@ -8,9 +8,11 @@ public static class OrdersModule
     public static IServiceCollection AddOrdersModule(this IServiceCollection services)
     {
         services.AddSingleton<OrderReadModel>();
+        services.AddSingleton<OrderReadModelProjections>();
         services.AddScoped<PlaceOrderHandler>();
         services.AddScoped<ShipOrderHandler>();
         services.AddScoped<ListOrdersHandler>();
+        services.AddScoped<MarkOrderReservedOnStockReservedHandler>();
         return services;
     }
 

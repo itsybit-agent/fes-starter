@@ -1,4 +1,5 @@
 using FesStarter.Api.Infrastructure;
+using FesStarter.Events;
 using FesStarter.Events.Inventory;
 using FesStarter.Inventory;
 using MediatR;

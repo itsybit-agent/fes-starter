@@ -16,7 +16,7 @@ public record OrderStockReserved(string OrderId, DateTime ReservedAt) : ICorrela
     public string? CausationId { get; init; }
 }
 
-public record OrderShipped(string OrderId, DateTime ShippedAt) : ICorrelatedEvent
+public record OrderShipped(string OrderId, string ProductId, int Quantity, DateTime ShippedAt) : ICorrelatedEvent
 {
     public string TimestampUtc { get; set; } = "";
     public string CorrelationId { get; init; } = "";

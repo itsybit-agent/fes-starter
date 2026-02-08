@@ -38,10 +38,6 @@ builder.Services.AddHostedService<ReadModelInitializer>();
 builder.Services.AddOrdersModule();
 builder.Services.AddInventoryModule();
 
-// Read model projections (eventually consistent event-driven updates)
-builder.Services.AddSingleton<FesStarter.Api.Features.Projections.OrderReadModelProjections>();
-builder.Services.AddSingleton<FesStarter.Api.Features.Projections.StockReadModelProjections>();
-
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>

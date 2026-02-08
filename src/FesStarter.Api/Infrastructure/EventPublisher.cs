@@ -2,10 +2,6 @@ using FileEventStore;
 using FesStarter.Events;
 using MediatR;
 
-namespace FesStarter.Api.Infrastructure;
-
-public record DomainEventNotification<TEvent>(TEvent DomainEvent) : INotification where TEvent : IStoreableEvent;
-
 public class MediatREventPublisher(IMediator mediator, ILogger<MediatREventPublisher> logger) : IEventPublisher
 {
     public async Task PublishAsync(IEnumerable<IStoreableEvent> events, CancellationToken ct = default)
