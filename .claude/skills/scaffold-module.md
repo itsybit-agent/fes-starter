@@ -8,22 +8,12 @@ Add a new bounded context/module to this project.
 /scaffold-module {ModuleName} "{description}"
 ```
 
-or
-
-```
-Add a {ModuleName} module: {description}
-```
-
 ## Examples
 
 ```
 /scaffold-module Payments "Payment processing and refunds"
 /scaffold-module Shipping "Order shipping and tracking"
 ```
-
-## How It Works
-
-**Copy an existing module, rename everything.**
 
 ## Steps
 
@@ -46,8 +36,6 @@ mv src/{ProjectName}.{ModuleName}/{ProjectName}.Orders.csproj \
 
 ### 3. Find and replace in all files
 
-In `src/{ProjectName}.{ModuleName}/`:
-
 | Find | Replace |
 |------|---------|
 | `Orders` | `{ModuleName}` |
@@ -55,27 +43,16 @@ In `src/{ProjectName}.{ModuleName}/`:
 | `Order` | `{Entity}` (singular, e.g., `Payment`) |
 | `order` | `{entity}` (lowercase singular) |
 
-Files to update:
+Update:
 - `{ModuleName}Module.cs`
 - `Domain/{Entity}Aggregate.cs`
 - `Features/*.cs`
-- All `namespace` and `using` statements
+- All namespaces
 
-### 4. Create events
+### 4. Create events folder
 
 ```bash
 mkdir -p src/{ProjectName}.Events/{ModuleName}
-```
-
-Create initial event (copy from Orders):
-```csharp
-// src/{ProjectName}.Events/{ModuleName}/{Entity}Events.cs
-namespace {ProjectName}.Events.{ModuleName};
-
-public record {Entity}Created(
-    Guid {Entity}Id,
-    // ... properties
-) : IDomainEvent;
 ```
 
 ### 5. Add to solution
@@ -93,41 +70,15 @@ Edit `src/{ProjectName}.Api/{ProjectName}.Api.csproj`:
 
 ### 7. Register in Program.cs
 
-Edit `src/{ProjectName}.Api/Program.cs`:
 ```csharp
-// Add with other module registrations
 builder.Services.Add{ModuleName}Module(builder.Configuration);
-
-// Add with other endpoint mappings
 app.Map{ModuleName}Endpoints();
 ```
 
-### 8. Clean up example features
+### 8. Clean up
 
-Delete or rename the copied features:
-- Remove `PlaceOrder.cs`, `ShipOrder.cs`, etc.
-- Keep one as a template, rename to `Create{Entity}.cs`
-
-### 9. Add frontend route (optional)
-
-Create `src/{ProjectName}.Web/src/app/{modulename}/` folder with:
-- `{modulename}.routes.ts`
-- Basic component
-
-Add to `app.routes.ts`:
-```typescript
-{ path: '{modulename}', loadChildren: () => import('./{modulename}/{modulename}.routes') }
-```
-
-## Summary output
-
-After completion, report:
-- ✅ Created `src/{ProjectName}.{ModuleName}/`
-- ✅ Created `src/{ProjectName}.Events/{ModuleName}/`
-- ✅ Added to solution
-- ✅ Registered in API
-- 📝 Next: Use `/scaffold-feature` to add features
+Delete copied example features, keep one as template.
 
 ## Reference
 
-Copy structure from `src/{ProjectName}.Orders/` — that's your template.
+Copy from `src/{ProjectName}.Orders/`
