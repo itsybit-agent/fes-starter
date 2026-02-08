@@ -8,24 +8,38 @@ A full-stack starter kit demonstrating:
 
 ## Quick Start
 
-**Run with Aspire (recommended):**
+### 1. Install dependencies
+
+```bash
+# Backend
+dotnet restore
+
+# Frontend (required before running!)
+cd src/FesStarter.Web
+npm install
+cd ../..
+```
+
+### 2. Run
+
+**Option A: With Aspire (recommended)**
 ```bash
 dotnet run --project src/FesStarter.AppHost
 ```
+Opens Aspire dashboard with API + Angular running together.
 
-**Run the API standalone:**
+**Option B: Separately**
 ```bash
+# Terminal 1 - API
 dotnet run --project src/FesStarter.Api
-# API at http://localhost:5000
+
+# Terminal 2 - Angular
+cd src/FesStarter.Web
+npm start
 ```
 
-**Run the Angular app (separate terminal):**
-```bash
-cd src/FesStarter.Web
-npm install
-npm start
-# App at http://localhost:4200
-```
+- API: http://localhost:5000
+- Web: http://localhost:4200
 
 ## Project Structure
 
@@ -101,11 +115,20 @@ tests/
 ## Using as a Template
 
 ```bash
-# Install as dotnet new template
-dotnet new install ./
+# Install template (once)
+dotnet new install ./path/to/fes-starter
 
 # Create new project
-dotnet new fes-starter -n MyProject
+dotnet new fes -n MyProject
+cd MyProject
+
+# Install frontend dependencies
+cd src/MyProject.Web
+npm install
+cd ../..
+
+# Run it
+dotnet run --project src/MyProject.AppHost
 ```
 
 ## License
