@@ -5,7 +5,12 @@ using Microsoft.AspNetCore.Http;
 
 namespace FesStarter.Orders;
 
-public record PlaceOrderCommand(string ProductId, int Quantity);
+public record PlaceOrderCommand(string ProductId, int Quantity, string? IdempotencyKey = null) : IIdempotentCommand
+{
+    string IIdempotentCommand.IdempotencyKey =>
+        IdempotencyKey ?? Guid.NewGuid().ToString();
+}
+
 public record PlaceOrderResponse(string OrderId);
 
 public class PlaceOrderHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher)
@@ -29,9 +34,18 @@ public class PlaceOrderHandler(IEventSessionFactory sessionFactory, IEventPublis
 public static class PlaceOrderEndpoint
 {
     public static void Map(WebApplication app) =>
-        app.MapPost("/api/orders", async (PlaceOrderCommand command, PlaceOrderHandler handler) =>
+        app.MapPost("/api/orders", async (
+            HttpRequest request,
+            PlaceOrderCommand command,
+            PlaceOrderHandler handler) =>
         {
-            var response = await handler.HandleAsync(command);
+            // Extract idempotency key from headers if present
+            var idempotencyKey = request.Headers.TryGetValue("Idempotency-Key", out var value)
+                ? value.ToString()
+                : null;
+            var commandWithKey = command with { IdempotencyKey = idempotencyKey };
+
+            var response = await handler.HandleAsync(commandWithKey);
             return Results.Created($"/api/orders/{response.OrderId}", response);
         })
         .WithName("PlaceOrder")

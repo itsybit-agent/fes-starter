@@ -17,8 +17,21 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Pr
 var dataPath = Path.Combine(builder.Environment.ContentRootPath, "data", "events");
 builder.Services.AddFileEventStore(dataPath);
 
-// Infrastructure
-builder.Services.AddScoped<IEventPublisher, MediatREventPublisher>();
+// Infrastructure - Distributed Tracing
+builder.Services.AddScoped<CorrelationContext>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IIdempotencyService, InMemoryIdempotencyService>();
+
+// Infrastructure - Event Publishing (with correlation ID enrichment)
+builder.Services.AddScoped<MediatREventPublisher>();
+builder.Services.AddScoped<IEventPublisher>(sp =>
+{
+    var inner = sp.GetRequiredService<MediatREventPublisher>();
+    var correlationContext = sp.GetRequiredService<CorrelationContext>();
+    var logger = sp.GetRequiredService<ILogger<CorrelationIdEventPublisher>>();
+    return new CorrelationIdEventPublisher(inner, correlationContext, logger);
+});
+
 builder.Services.AddHostedService<ReadModelInitializer>();
 
 // Modules
@@ -38,6 +51,9 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
+
+// Middleware - Distributed Tracing
+app.UseCorrelationId();
 
 app.UseCors();
 app.MapDefaultEndpoints();
