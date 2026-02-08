@@ -8,8 +8,8 @@ namespace FesStarter.Orders;
 
 public record PlaceOrderCommand(string ProductId, int Quantity, string? IdempotencyKey = null) : IIdempotentCommand
 {
-    string IIdempotentCommand.IdempotencyKey =>
-        IdempotencyKey ?? Guid.NewGuid().ToString();
+    // Return empty string when null - generating a new Guid defeats the purpose of idempotency
+    string IIdempotentCommand.IdempotencyKey => IdempotencyKey ?? string.Empty;
 }
 
 public record PlaceOrderResponse(string OrderId);
@@ -48,9 +48,17 @@ public static class PlaceOrderEndpoint
             // Execute with idempotency enforcement - cached results for duplicate requests
             var response = await idempotencyService.GetOrExecuteAsync(
                 idempotencyKey ?? "",
-                () => handler.HandleAsync(commandWithKey));
+                () => handler.HandleAsync(commandWithKey),
+                ct: request.HttpContext.RequestAborted);
 
-            return Results.Created($"/api/orders/{response?.OrderId}", response);
+            if (response is null)
+            {
+                return Results.Problem(
+                    detail: "Failed to place order.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
+
+            return Results.Created($"/api/orders/{response.OrderId}", response);
         })
         .WithName("PlaceOrder")
         .WithTags("Orders");

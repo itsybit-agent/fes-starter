@@ -12,8 +12,8 @@ public record InitializeStockCommand(
     int InitialQuantity,
     string? IdempotencyKey = null) : IIdempotentCommand
 {
-    string IIdempotentCommand.IdempotencyKey =>
-        IdempotencyKey ?? Guid.NewGuid().ToString();
+    // Return empty string when null - generating a new Guid defeats the purpose of idempotency
+    string IIdempotentCommand.IdempotencyKey => IdempotencyKey ?? string.Empty;
 }
 
 public record InitializeStockRequest(string ProductName, int InitialQuantity);
@@ -55,7 +55,8 @@ public static class InitializeStockEndpoint
             // Execute with idempotency enforcement
             await idempotencyService.GetOrExecuteAsync(
                 idempotencyKey ?? "",
-                () => handler.HandleAsync(command));
+                () => handler.HandleAsync(command),
+                ct: request.HttpContext.RequestAborted);
 
             return Results.Created($"/api/products/{productId}/stock", null);
         })

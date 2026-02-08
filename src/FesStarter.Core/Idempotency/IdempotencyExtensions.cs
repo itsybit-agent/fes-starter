@@ -25,7 +25,8 @@ public static class IdempotencyExtensions
     public static IServiceCollection AddIdempotency(this IServiceCollection services)
     {
         services.AddMemoryCache();
-        services.AddScoped<IIdempotencyService, InMemoryIdempotencyService>();
+        // Must be singleton so the per-key SemaphoreSlim locks are shared across requests
+        services.AddSingleton<IIdempotencyService, InMemoryIdempotencyService>();
         return services;
     }
 }

@@ -160,7 +160,7 @@ public class IdempotencyTests : IClassFixture<ApiTestFixture>
 
     private async Task<HttpResponseMessage> PlaceOrderWithKey(PlaceOrderCommand command, string idempotencyKey)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/orders")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/orders")
         {
             Content = JsonContent.Create(command)
         };
@@ -171,7 +171,7 @@ public class IdempotencyTests : IClassFixture<ApiTestFixture>
     private async Task<HttpResponseMessage> InitializeStockWithKey(
         string productId, string productName, int quantity, string idempotencyKey)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/products/{productId}/stock")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/products/{productId}/stock")
         {
             Content = JsonContent.Create(new { ProductName = productName, InitialQuantity = quantity })
         };
