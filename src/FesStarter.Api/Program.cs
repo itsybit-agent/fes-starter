@@ -1,58 +1,45 @@
 using FileEventStore;
-using FesStarter.Api.Domain;
-using FesStarter.Api.Features.CreateTodo;
-using FesStarter.Api.Features.CompleteTodo;
-using FesStarter.Api.Features.ListTodos;
+using FesStarter.Api.Infrastructure;
+using FesStarter.Events;
+using FesStarter.Orders;
+using FesStarter.Inventory;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Aspire service defaults (OpenTelemetry, health checks, etc.)
 builder.AddServiceDefaults();
-
-// Add services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+
+// MediatR for event publishing and translations
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
 // FileEventStore
 var dataPath = Path.Combine(builder.Environment.ContentRootPath, "data", "events");
 builder.Services.AddFileEventStore(dataPath);
 
-// Read model (singleton - in production, use a proper database)
-builder.Services.AddSingleton<TodoReadModel>();
+// Infrastructure
+builder.Services.AddScoped<IEventPublisher, MediatREventPublisher>();
 builder.Services.AddHostedService<ReadModelInitializer>();
 
-// Handlers
-builder.Services.AddScoped<CreateTodoHandler>();
-builder.Services.AddScoped<CompleteTodoHandler>();
-builder.Services.AddScoped<ListTodosHandler>();
+// Modules
+builder.Services.AddOrdersModule();
+builder.Services.AddInventoryModule();
 
-// CORS for Angular
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-    {
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
+        policy.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod());
 });
 
 var app = builder.Build();
 
-// Configure pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 app.UseCors();
-
-// Aspire health endpoints
 app.MapDefaultEndpoints();
 
-// Map endpoints (vertical slices)
-app.MapCreateTodo();
-app.MapCompleteTodo();
-app.MapListTodos();
+// Module endpoints
+app.MapOrderEndpoints();
+app.MapInventoryEndpoints();
 
 app.Run();
