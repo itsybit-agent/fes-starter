@@ -13,7 +13,7 @@ public class ReadModelInitializer(
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var dataPath = Path.Combine(environment.ContentRootPath, "data", "events");
+        var dataPath = Path.Combine(environment.ContentRootPath, "data", "events", "streams");
 
         if (!Directory.Exists(dataPath))
         {
