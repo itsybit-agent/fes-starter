@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component } from '@angular/core';
 import { Routes } from '@angular/router';
 import { PlaceOrderComponent } from './place-order.component';
 import { OrderListComponent } from './order-list.component';
@@ -15,9 +15,7 @@ import { OrderListComponent } from './order-list.component';
   `,
   styles: [`.orders-page { padding: 1rem; }`]
 })
-export class OrdersPage {
-  @ViewChild(OrderListComponent) orderList!: OrderListComponent;
-}
+export class OrdersPage { }
 
 export const ordersRoutes: Routes = [
   { path: '', component: OrdersPage }
