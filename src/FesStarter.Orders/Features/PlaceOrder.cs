@@ -8,7 +8,7 @@ namespace FesStarter.Orders;
 public record PlaceOrderCommand(string ProductId, int Quantity);
 public record PlaceOrderResponse(string OrderId);
 
-public class PlaceOrderHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher, OrderReadModel readModel)
+public class PlaceOrderHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher)
 {
     public async Task<PlaceOrderResponse> HandleAsync(PlaceOrderCommand command)
     {
@@ -20,8 +20,6 @@ public class PlaceOrderHandler(IEventSessionFactory sessionFactory, IEventPublis
 
         var events = order.UncommittedEvents.ToList();
         await session.SaveChangesAsync();
-
-        foreach (var evt in events) readModel.Apply(evt);
         await eventPublisher.PublishAsync(events);
 
         return new PlaceOrderResponse(orderId);

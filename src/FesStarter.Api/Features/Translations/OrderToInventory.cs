@@ -15,8 +15,6 @@ namespace FesStarter.Api.Features.Translations;
 public class OrderToInventoryHandler(
     IEventSessionFactory sessionFactory,
     IEventPublisher eventPublisher,
-    StockReadModel stockReadModel,
-    OrderReadModel orderReadModel,
     ILogger<OrderToInventoryHandler> logger) :
     INotificationHandler<DomainEventNotification<OrderPlaced>>,
     INotificationHandler<DomainEventNotification<OrderShipped>>
@@ -38,7 +36,6 @@ public class OrderToInventoryHandler(
         stock.Reserve(evt.Quantity, evt.OrderId);
         var stockEvents = stock.UncommittedEvents.ToList();
         await session.SaveChangesAsync();
-        foreach (var e in stockEvents) stockReadModel.Apply(e);
         await eventPublisher.PublishAsync(stockEvents, ct);
 
         // Mark order as reserved
@@ -49,7 +46,6 @@ public class OrderToInventoryHandler(
             order.MarkReserved();
             var orderEvents = order.UncommittedEvents.ToList();
             await orderSession.SaveChangesAsync();
-            foreach (var e in orderEvents) orderReadModel.Apply(e);
             await eventPublisher.PublishAsync(orderEvents, ct);
         }
     }
@@ -59,7 +55,8 @@ public class OrderToInventoryHandler(
         var evt = notification.DomainEvent;
         logger.LogInformation("Translating OrderShipped -> StockDeducted for Order {OrderId}", evt.OrderId);
 
-        var order = orderReadModel.Get(evt.OrderId);
+        await using var orderSession = sessionFactory.OpenSession();
+        var order = await orderSession.AggregateStreamAsync<OrderAggregate>($"{evt.OrderId}");
         if (order == null)
         {
             logger.LogWarning("Order {OrderId} not found", evt.OrderId);
@@ -70,14 +67,13 @@ public class OrderToInventoryHandler(
         var stock = await session.AggregateStreamAsync<ProductStockAggregate>($"{order.ProductId}");
         if (stock == null)
         {
-            logger.LogWarning("No stock found for product {ProductId}", order.ProductId);
+            logger.LogWarning("No stock found for product {order.ProductId}", order.ProductId);
             return;
         }
 
         stock.Deduct(order.Quantity, evt.OrderId);
         var events = stock.UncommittedEvents.ToList();
         await session.SaveChangesAsync();
-        foreach (var e in events) stockReadModel.Apply(e);
         await eventPublisher.PublishAsync(events, ct);
     }
 }

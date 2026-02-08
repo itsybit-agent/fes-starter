@@ -8,7 +8,7 @@ namespace FesStarter.Inventory;
 public record InitializeStockCommand(string ProductId, string ProductName, int InitialQuantity);
 public record InitializeStockRequest(string ProductName, int InitialQuantity);
 
-public class InitializeStockHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher, StockReadModel readModel)
+public class InitializeStockHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher)
 {
     public async Task HandleAsync(InitializeStockCommand command)
     {
@@ -19,8 +19,6 @@ public class InitializeStockHandler(IEventSessionFactory sessionFactory, IEventP
 
         var events = stock.UncommittedEvents.ToList();
         await session.SaveChangesAsync();
-
-        foreach (var evt in events) readModel.Apply(evt);
         await eventPublisher.PublishAsync(events);
     }
 }

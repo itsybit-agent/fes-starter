@@ -7,7 +7,7 @@ namespace FesStarter.Orders;
 
 public record ShipOrderCommand(string OrderId);
 
-public class ShipOrderHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher, OrderReadModel readModel)
+public class ShipOrderHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher)
 {
     public async Task HandleAsync(ShipOrderCommand command)
     {
@@ -20,8 +20,6 @@ public class ShipOrderHandler(IEventSessionFactory sessionFactory, IEventPublish
 
         var events = order.UncommittedEvents.ToList();
         await session.SaveChangesAsync();
-
-        foreach (var evt in events) readModel.Apply(evt);
         await eventPublisher.PublishAsync(events);
     }
 }
