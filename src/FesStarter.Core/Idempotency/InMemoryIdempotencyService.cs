@@ -7,6 +7,32 @@ namespace FesStarter.Core.Idempotency;
 /// In-memory implementation of idempotency service.
 /// For production, use Redis or distributed cache.
 /// </summary>
+/// <remarks>
+/// ⚠️ RACE CONDITION: The current check-then-execute pattern is not atomic.
+/// Two simultaneous requests with the same key could both execute before caching.
+/// 
+/// For production, consider using a SemaphoreSlim per key:
+/// <code>
+/// private readonly ConcurrentDictionary&lt;string, SemaphoreSlim&gt; _locks = new();
+/// 
+/// var semaphore = _locks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+/// await semaphore.WaitAsync(ct);
+/// try
+/// {
+///     // Check cache again after acquiring lock
+///     if (_cache.TryGetValue(cacheKey, out T? cached)) return cached;
+///     var result = await executor();
+///     _cache.Set(cacheKey, result, expiration);
+///     return result;
+/// }
+/// finally
+/// {
+///     semaphore.Release();
+/// }
+/// </code>
+/// 
+/// Or use Redis with SETNX for distributed locking.
+/// </remarks>
 public class InMemoryIdempotencyService : IIdempotencyService
 {
     private readonly IMemoryCache _cache;
