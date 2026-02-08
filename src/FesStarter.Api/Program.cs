@@ -64,3 +64,6 @@ app.MapOrderEndpoints();
 app.MapInventoryEndpoints();
 
 app.Run();
+
+// Make Program accessible to integration tests
+public partial class Program { }
