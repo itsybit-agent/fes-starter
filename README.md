@@ -98,19 +98,36 @@ tests/
 | GET | `/api/products/{productId}/stock` | Get stock for a product |
 | GET | `/api/products/stock` | List all stock |
 
-## Adding a New Feature
+## Adding New Features
 
-### Backend
-1. Create `{FeatureName}.cs` in the module's `Features/` folder
-2. Add command/query record, handler class, and endpoint static class
-3. Register handler in the module's `Add{X}Module()`
-4. Map endpoint in the module's `Map{X}Endpoints()`
+Use the scaffold skills with Claude:
 
-### Frontend
-1. Add types to `{feature}.types.ts`
-2. Add API method to `{feature}.api.ts`
-3. Create component (`{feature-name}.component.ts`) using signals for state
-4. Wire into page component in `{feature}.routes.ts`
+```bash
+# Add a new module (bounded context)
+/scaffold-module Payments "Payment processing"
+
+# Add a command (write operation)
+/scaffold-command Orders CancelOrder "Cancel an order"
+
+# Add a query (read operation)
+/scaffold-query Orders GetOrderDetails "Get order by ID"
+
+# Add an automation (cross-module event handler)
+/scaffold-automation Inventory ReserveStockOnOrderPlaced "Reserve stock when order placed"
+```
+
+See [.claude/skills/README.md](.claude/skills/README.md) for details.
+
+### Manual approach
+
+**Backend:**
+1. Copy an existing feature file from `Features/`
+2. Rename and update the command/query/handler
+3. Wire into the module
+
+**Frontend:**
+1. Copy existing component
+2. Update types, API calls, and template
 
 ## Using as a Template
 
