@@ -43,6 +43,23 @@ src/
 │   ├── Program.cs                   # Wire modules, middleware, run
 │   └── Infrastructure/              # Cross-cutting: EventPublisher, CorrelationId, etc.
 │
+├── {ProjectName}.Web/               # Angular frontend (mirrors backend structure)
+│   └── src/app/
+│       ├── app.ts                   # Root component
+│       ├── app.config.ts            # Zoneless config, providers
+│       ├── app.routes.ts            # Lazy-loaded routes per context
+│       ├── {context1}/              # Bounded context folder
+│       │   ├── {context1}.api.ts    # HTTP client service
+│       │   ├── {context1}.types.ts  # DTOs matching backend
+│       │   ├── {context1}.routes.ts # Context routes + page component
+│       │   ├── {feature1}.component.ts  # Feature component (signals)
+│       │   └── {feature2}.component.ts
+│       └── {context2}/              # Another bounded context
+│           ├── {context2}.api.ts
+│           ├── {context2}.types.ts
+│           ├── {context2}.routes.ts
+│           └── {feature}.component.ts
+│
 tests/
 ├── {ProjectName}.{Context}.Tests/
 │   └── Domain/{Aggregate}Tests.cs   # Unit tests for aggregates
@@ -581,6 +598,281 @@ public class MediatREventPublisher(IPublisher publisher) : IEventPublisher
 
 ---
 
+## Frontend (Angular)
+
+The frontend mirrors the backend's bounded context structure using **Angular 19+ with zoneless change detection and signals**.
+
+### App Configuration
+
+```typescript
+// src/app/app.config.ts
+import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideZonelessChangeDetection(),  // No zone.js!
+    provideRouter(routes),
+    provideHttpClient()
+  ]
+};
+```
+
+### Route Structure (Lazy Loading Per Context)
+
+```typescript
+// src/app/app.routes.ts
+import { Routes } from '@angular/router';
+
+export const routes: Routes = [
+  { path: '', redirectTo: '{context1}', pathMatch: 'full' },
+  {
+    path: '{context1}',
+    loadChildren: () => import('./{context1}/{context1}.routes').then(m => m.{context1}Routes)
+  },
+  {
+    path: '{context2}',
+    loadChildren: () => import('./{context2}/{context2}.routes').then(m => m.{context2}Routes)
+  }
+];
+```
+
+### Bounded Context API Service
+
+```typescript
+// src/app/{context}/{context}.api.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { {Command}Command, {Command}Response, {Entity}Dto } from './{context}.types';
+import { environment } from '../../environments/environment';
+
+@Injectable({ providedIn: 'root' })
+export class {Context}Api {
+  private readonly baseUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient) {}
+
+  // Command with idempotency key
+  {command}(command: {Command}Command, idempotencyKey?: string): Observable<{Command}Response> {
+    const key = idempotencyKey || crypto.randomUUID();
+    return this.http.post<{Command}Response>(
+      `${this.baseUrl}/{resource}`,
+      command,
+      { headers: { 'Idempotency-Key': key } }
+    );
+  }
+
+  // Query
+  list{Entities}(): Observable<{Entity}Dto[]> {
+    return this.http.get<{Entity}Dto[]>(`${this.baseUrl}/{resource}`);
+  }
+}
+```
+
+### Types (Match Backend DTOs)
+
+```typescript
+// src/app/{context}/{context}.types.ts
+
+// Command
+export interface {Command}Command {
+  param1: string;
+  param2: number;
+}
+
+// Response
+export interface {Command}Response {
+  entityId: string;
+}
+
+// DTO
+export interface {Entity}Dto {
+  entityId: string;
+  name: string;
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+```
+
+### Context Routes + Page Component
+
+```typescript
+// src/app/{context}/{context}.routes.ts
+import { Component, ViewChild } from '@angular/core';
+import { Routes } from '@angular/router';
+import { {Create}Component } from './{create}.component';
+import { {List}Component } from './{list}.component';
+
+@Component({
+  standalone: true,
+  imports: [{Create}Component, {List}Component],
+  template: `
+    <div class="{context}-page">
+      <h2>{Context}</h2>
+      <app-{create} ({created})="{list}.load{Entities}()" />
+      <app-{list} #{list} />
+    </div>
+  `,
+  styles: [`.{context}-page { padding: 1rem; }`]
+})
+export class {Context}Page {
+  @ViewChild({List}Component) {list}!: {List}Component;
+}
+
+export const {context}Routes: Routes = [
+  { path: '', component: {Context}Page }
+];
+```
+
+### Feature Component (Signals)
+
+```typescript
+// src/app/{context}/{create}.component.ts
+import { Component, OnInit, signal, output } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { {Context}Api } from './{context}.api';
+
+@Component({
+  selector: 'app-{create}',
+  standalone: true,
+  imports: [FormsModule],
+  template: `
+    <h3>Create {Entity}</h3>
+    <div class="form">
+      <input type="text" [ngModel]="name()" (ngModelChange)="name.set($event)" placeholder="Name">
+      <input type="number" [ngModel]="quantity()" (ngModelChange)="quantity.set($event)" min="1">
+      <button (click)="submit()" [disabled]="!name()">
+        Create
+      </button>
+    </div>
+  `,
+  styles: [`
+    .form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    input, button { padding: 0.5rem; }
+    input[type="number"] { width: 80px; }
+  `]
+})
+export class {Create}Component {
+  // Signals for reactive state (zoneless)
+  name = signal('');
+  quantity = signal(1);
+
+  // Output event
+  {created} = output<void>();
+
+  constructor(private api: {Context}Api) {}
+
+  submit() {
+    if (!this.name()) return;
+    this.api.{command}({
+      param1: this.name(),
+      param2: this.quantity()
+    }).subscribe(() => {
+      this.name.set('');
+      this.quantity.set(1);
+      this.{created}.emit();
+    });
+  }
+}
+```
+
+### List Component (Signals)
+
+```typescript
+// src/app/{context}/{list}.component.ts
+import { Component, OnInit, signal } from '@angular/core';
+import { {Context}Api } from './{context}.api';
+import { {Entity}Dto } from './{context}.types';
+
+@Component({
+  selector: 'app-{list}',
+  standalone: true,
+  template: `
+    <h3>{Entities}</h3>
+    @if (items().length > 0) {
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.entityId) {
+            <tr [class]="item.status.toLowerCase()">
+              <td>{{ item.entityId.slice(0, 8) }}</td>
+              <td>{{ item.name }}</td>
+              <td>{{ item.status }}</td>
+              <td>
+                @if (item.status === 'Active') {
+                  <button (click)="doAction(item.entityId)">Action</button>
+                } @else {
+                  <span>✓</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p>No {entities} yet</p>
+    }
+  `,
+  styles: [`
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #ddd; }
+    button { padding: 0.25rem 0.75rem; cursor: pointer; }
+  `]
+})
+export class {List}Component implements OnInit {
+  items = signal<{Entity}Dto[]>([]);
+
+  constructor(private api: {Context}Api) {}
+
+  ngOnInit() {
+    this.load{Entities}();
+  }
+
+  load{Entities}() {
+    this.api.list{Entities}().subscribe(data => this.items.set(data));
+  }
+
+  doAction(entityId: string) {
+    this.api.{action}(entityId).subscribe(() => this.load{Entities}());
+  }
+}
+```
+
+### Frontend Key Patterns
+
+| Pattern | Implementation |
+|---------|----------------|
+| **State** | Signals (`signal<T>()`) - no zone.js |
+| **Forms** | `FormsModule` + `ngModel` with signal updates |
+| **Events** | `output<T>()` for parent communication |
+| **Structure** | One folder per bounded context |
+| **API** | Injectable service per context |
+| **Types** | Mirror backend DTOs exactly |
+| **Routing** | Lazy-load per context |
+| **Components** | Standalone, inline templates |
+
+### Checklist: Add New Frontend Feature
+
+1. [ ] Add types to `{context}.types.ts` matching backend DTOs
+2. [ ] Add API method to `{context}.api.ts`
+3. [ ] Create `{feature}.component.ts` with signals
+4. [ ] Import in page component and wire up events
+5. [ ] If new context: add lazy route to `app.routes.ts`
+
+---
+
 ## Testing Patterns
 
 ### Unit Tests for Aggregates
@@ -791,8 +1083,16 @@ public async Task {Context1}Action_Triggers{Context2}Reaction()
 
 ## Tech Stack Reference
 
+### Backend
 - **.NET 8+** / Minimal APIs
 - **FileEventStore** - File-based event sourcing (swap for Marten/EventStoreDB in production)
 - **MediatR** - Event publishing and cross-context translations
 - **FluentAssertions** - Test assertions
 - **xUnit** - Test framework
+
+### Frontend
+- **Angular 19+** - Zoneless with signals
+- **Standalone Components** - No NgModules
+- **Lazy Loading** - Per bounded context
+- **Signals** - Reactive state management (`signal<T>()`, `computed()`)
+- **Output** - Event emission to parent (`output<T>()`)
