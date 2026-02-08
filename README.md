@@ -1,31 +1,45 @@
-# FesStarter - Event-Sourced Modular Monolith Starter
+# FES Starter
 
-A full-stack starter kit demonstrating:
-- **CQRS + Event Sourcing** with [FileEventStore](https://github.com/jocelynenglund/FileBasedEventStore)
-- **Vertical Slice Architecture** - Features organized by use case, not layer
-- **Modular Monolith** - Bounded contexts as separate class library projects
-- **Angular Frontend** - Zoneless change detection with signals
+Event-Sourced Modular Monolith Starter with CQRS, Vertical Slices, and Angular.
 
-## Quick Start
+## Installation
 
-**Run with Aspire (recommended):**
 ```bash
-dotnet run --project src/FesStarter.AppHost
+# Clone and install template
+git clone https://github.com/itsybit-agent/fes-starter.git
+dotnet new install ./fes-starter
 ```
 
-**Run the API standalone:**
-```bash
-dotnet run --project src/FesStarter.Api
-# API at http://localhost:5000
-```
+## Create a New Project
 
-**Run the Angular app (separate terminal):**
 ```bash
-cd src/FesStarter.Web
+# Create project
+dotnet new fes -n MyApp
+cd MyApp
+
+# Install frontend dependencies
+cd src/MyApp.Web
 npm install
-npm start
-# App at http://localhost:4200
+cd ../..
+
+# Run with Aspire
+dotnet run --project src/MyApp.AppHost
 ```
+
+Opens Aspire dashboard with API + Angular running together.
+
+- API: http://localhost:5000
+- Web: http://localhost:4200
+- Aspire Dashboard: http://localhost:15000
+
+## What's Included
+
+- **CQRS + Event Sourcing** with [FileEventStore](https://github.com/jocelynenglund/FileBasedEventStore)
+- **Vertical Slice Architecture** - Features organized by use case
+- **Modular Monolith** - Bounded contexts as separate projects
+- **Angular Frontend** - Zoneless change detection with signals
+- **Aspire** - Orchestration and observability
+- **Scaffold Skills** - AI-assisted code generation
 
 ## Project Structure
 
@@ -84,28 +98,41 @@ tests/
 | GET | `/api/products/{productId}/stock` | Get stock for a product |
 | GET | `/api/products/stock` | List all stock |
 
-## Adding a New Feature
+## Adding New Features
 
-### Backend
-1. Create `{FeatureName}.cs` in the module's `Features/` folder
-2. Add command/query record, handler class, and endpoint static class
-3. Register handler in the module's `Add{X}Module()`
-4. Map endpoint in the module's `Map{X}Endpoints()`
-
-### Frontend
-1. Add types to `{feature}.types.ts`
-2. Add API method to `{feature}.api.ts`
-3. Create component (`{feature-name}.component.ts`) using signals for state
-4. Wire into page component in `{feature}.routes.ts`
-
-## Using as a Template
+Use the scaffold skills with Claude:
 
 ```bash
-# Install as dotnet new template
-dotnet new install ./
+# Add a new module (bounded context)
+/scaffold-module Payments "Payment processing"
 
-# Create new project
-dotnet new fes-starter -n MyProject
+# Add a command (write operation)
+/scaffold-command Orders CancelOrder "Cancel an order"
+
+# Add a query (read operation)
+/scaffold-query Orders GetOrderDetails "Get order by ID"
+
+# Add an automation (cross-module event handler)
+/scaffold-automation Inventory ReserveStockOnOrderPlaced "Reserve stock when order placed"
+```
+
+See [.claude/skills/README.md](.claude/skills/README.md) for details.
+
+### Manual approach
+
+**Backend:**
+1. Copy an existing feature file from `Features/`
+2. Rename and update the command/query/handler
+3. Wire into the module
+
+**Frontend:**
+1. Copy existing component
+2. Update types, API calls, and template
+
+## Uninstall Template
+
+```bash
+dotnet new uninstall itsybit-agent/fes-starter
 ```
 
 ## License

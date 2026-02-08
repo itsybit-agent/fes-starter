@@ -1,11 +1,11 @@
 {
   "$schema": "http://json.schemastore.org/template",
   "author": "itsyBIT",
-  "classifications": ["Web", "API", "Event Sourcing", "Aspire"],
-  "identity": "FileEventStore.Starter.VerticalSlice",
-  "name": "FileEventStore Vertical Slice Starter",
-  "shortName": "fes-starter",
-  "description": "A full-stack starter kit with vertical slices, FileEventStore, and Aspire orchestration",
+  "classifications": ["Web", "API", "Event Sourcing", "CQRS", "Aspire"],
+  "identity": "FesStarter.Template",
+  "name": "FES Starter - Event Sourcing with Vertical Slices",
+  "shortName": "fes",
+  "description": "Full-stack starter with FileEventStore, CQRS, vertical slices, Aspire, and Angular",
   "tags": {
     "language": "C#",
     "type": "solution"
@@ -13,18 +13,14 @@
   "sourceName": "FesStarter",
   "preferNameDirectory": true,
   "symbols": {
-    "Framework": {
-      "type": "parameter",
-      "description": "The target framework for the project.",
-      "datatype": "choice",
-      "choices": [
-        {
-          "choice": "net10.0",
-          "description": "Target .NET 10"
-        }
-      ],
-      "replaces": "net10.0",
-      "defaultValue": "net10.0"
+    "lowerName": {
+      "type": "generated",
+      "generator": "casing",
+      "parameters": {
+        "source": "name",
+        "toLower": true
+      },
+      "replaces": "fes-starter"
     }
   },
   "sources": [
@@ -35,10 +31,18 @@
             "**/bin/**",
             "**/obj/**",
             "**/.git/**",
-            "**/node_modules/**"
+            "**/node_modules/**",
+            "**/.angular/**",
+            "**/dist/**",
+            "**/data/**",
+            "**/*.user",
+            "**/.vs/**",
+            "**/package-lock.json",
+            "**/docs/CLAUDE-TEMPLATE.md"
           ]
         }
       ]
     }
-  ]
+  ],
+  "postActions": []
 }
