@@ -9,25 +9,35 @@ src/
 ├── FesStarter.Events/          # Shared events (contracts between modules)
 │   ├── Orders/OrderEvents.cs
 │   ├── Inventory/InventoryEvents.cs
-│   └── IEventPublisher.cs
+│   ├── IEventPublisher.cs
+│   ├── ICorrelatedEvent.cs
+│   ├── IIdempotentCommand.cs
+│   └── DomainEventNotification.cs
 │
 ├── FesStarter.Orders/          # Orders bounded context (module)
-│   ├── OrderAggregate.cs       # Domain aggregate
 │   ├── OrdersModule.cs         # DI + endpoint registration
-│   ├── PlaceOrder.cs           # Feature: command + handler + endpoint
-│   ├── ShipOrder.cs            # Feature
-│   └── ListOrders.cs           # Feature: query + read model
+│   ├── Domain/
+│   │   └── OrderAggregate.cs   # Write model (state machine)
+│   └── Features/
+│       ├── PlaceOrder.cs       # Command + Handler + Endpoint
+│       ├── ShipOrder.cs        # Command + Handler + Endpoint
+│       ├── ListOrders.cs       # Query + ReadModel + Projections
+│       └── MarkOrderReservedOnStockReserved.cs  # Cross-context translation
 │
 ├── FesStarter.Inventory/       # Inventory bounded context (module)
-│   ├── ProductStockAggregate.cs
 │   ├── InventoryModule.cs
-│   ├── InitializeStock.cs
-│   └── GetStock.cs
+│   ├── Domain/
+│   │   └── ProductStockAggregate.cs
+│   └── Features/
+│       ├── InitializeStock.cs  # Command + Handler + Endpoint
+│       ├── GetStock.cs         # Query + ReadModel + Projections
+│       ├── ReserveStockOnOrderPlaced.cs   # Cross-context translation
+│       └── DeductStockOnOrderShipped.cs   # Cross-context translation
 │
 ├── FesStarter.Api/             # Composition root (thin!)
 │   ├── Program.cs              # Wire modules, middleware, run
-│   ├── Infrastructure/         # Cross-cutting: EventPublisher, ReadModelInitializer
-│   └── Features/Translations/  # Cross-context event handlers
+│   └── Infrastructure/         # Cross-cutting: EventPublisher, ReadModelInitializer,
+│                               #   CorrelationId, Idempotency
 │
 ├── FesStarter.AppHost/         # Aspire orchestration
 ├── FesStarter.ServiceDefaults/ # OpenTelemetry, health checks
@@ -59,10 +69,10 @@ src/
 Each feature contains everything in a single file:
 ```csharp
 // PlaceOrder.cs
-public record PlaceOrderCommand(string ProductId, int Quantity);
+public record PlaceOrderCommand(string ProductId, int Quantity, string? IdempotencyKey = null) : IIdempotentCommand;
 public record PlaceOrderResponse(string OrderId);
 
-public class PlaceOrderHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher, OrderReadModel readModel)
+public class PlaceOrderHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher)
 {
     public async Task<PlaceOrderResponse> HandleAsync(PlaceOrderCommand command) { ... }
 }
@@ -70,7 +80,7 @@ public class PlaceOrderHandler(IEventSessionFactory sessionFactory, IEventPublis
 public static class PlaceOrderEndpoint
 {
     public static void Map(WebApplication app) =>
-        app.MapPost("/api/orders", async (PlaceOrderCommand cmd, PlaceOrderHandler handler) => ...);
+        app.MapPost("/api/orders", async (HttpRequest request, PlaceOrderCommand cmd, PlaceOrderHandler handler) => ...);
 }
 ```
 
@@ -88,20 +98,34 @@ public static class OrdersModule
 ### 3. Events as Contracts
 Events live in the shared `FesStarter.Events` project so modules can reference each other's events without coupling to implementations.
 
-### 4. Stream Translations
-Cross-context reactions use MediatR notifications:
+### 4. Cross-Context Translations
+Cross-context event handlers live **inside the module that owns the reaction**, using MediatR notifications:
 ```csharp
-// OrderToInventory.cs (in Api project)
-public class OrderToInventoryHandler : INotificationHandler<DomainEventNotification<OrderPlaced>>
+// ReserveStockOnOrderPlaced.cs (in Inventory module)
+public class ReserveStockOnOrderPlacedHandler :
+    INotificationHandler<DomainEventNotification<OrderPlaced>>
 {
     // When order placed -> reserve inventory
 }
+
+// MarkOrderReservedOnStockReserved.cs (in Orders module)
+public class MarkOrderReservedOnStockReservedHandler :
+    INotificationHandler<DomainEventNotification<StockReserved>>
+{
+    // When stock reserved -> mark order as placed
+}
 ```
 
-### 5. Read Models
-- Singleton in-memory dictionaries (for demo)
-- Rebuilt from events on startup via `ReadModelInitializer`
-- Use signals in Angular for zoneless change detection
+### 5. Read Models + Projections (Colocated)
+Read models, projections, query handlers, and endpoints all live in the same feature file:
+```csharp
+// ListOrders.cs contains:
+// - OrderDto (record)
+// - OrderReadModel (ConcurrentDictionary, singleton)
+// - OrderReadModelProjections (MediatR notification handler)
+// - ListOrdersHandler (query handler)
+// - ListOrdersEndpoint (HTTP GET)
+```
 
 ## Angular Frontend (FesStarter.Web)
 
@@ -174,18 +198,19 @@ Uses Angular 19+ control flow (`@if`, `@for`, `@else`) instead of structural dir
 
 ## Adding a New Bounded Context
 
-1. **Create project**: `FesStarter.{ContextName}/`
-2. **Add events**: In `FesStarter.Events/{ContextName}/` 
-3. **Create aggregate**: `{Name}Aggregate.cs`
-4. **Create features**: One `.cs` file per command/query
+1. **Create project**: `{ProjectName}.{ContextName}/` with `Domain/` and `Features/` subfolders
+2. **Add events**: In `{ProjectName}.Events/{ContextName}/`
+3. **Create aggregate**: `Domain/{Name}Aggregate.cs`
+4. **Create features**: One `.cs` file per command/query in `Features/`
 5. **Create module**: `{ContextName}Module.cs` with `Add{X}Module()` and `Map{X}Endpoints()`
 6. **Register in Api**: `builder.Services.Add{X}Module()` + `app.Map{X}Endpoints()`
-7. **Add translations** (if needed): In `Api/Features/Translations/`
+7. **Add MediatR assembly**: Add the module's assembly to `RegisterServicesFromAssemblies()` in `Program.cs`
+8. **Add translations** (if needed): As MediatR handlers in the module that owns the reaction
 
 ## Adding a New Feature
 
 ### Backend
-1. Create `{FeatureName}.cs` in the module project
+1. Create `{FeatureName}.cs` in the module's `Features/` folder
 2. Add command/query record
 3. Add handler class
 4. Add endpoint static class
@@ -201,18 +226,24 @@ Uses Angular 19+ control flow (`@if`, `@for`, `@else`) instead of structural dir
 ## Tech Stack
 - .NET 10 / Minimal APIs
 - FileEventStore (file-based event sourcing)
-- MediatR (event publishing, translations)
+- MediatR (event publishing, projections, cross-context translations)
 - Aspire (orchestration, observability)
 - Angular 21 (zoneless, signals, standalone components)
 - TypeScript (strict mode)
 - SCSS (inline in components)
+- xUnit + FluentAssertions (testing)
+
+## Build & Test
+- Build API: `dotnet build src/FesStarter.Api/`
+- Run tests: `dotnet test`
+- Do NOT build the `.slnx` directly (Angular entry breaks `dotnet build`)
 
 ## Event Model Mapping
 
 | Event Model Element | Code Location |
 |---------------------|---------------|
-| 🟧 Event (orange)   | `FesStarter.Events/{Context}/{Event}.cs` |
-| 🟦 Command (blue)   | `FesStarter.{Context}/{Feature}.cs` |
-| 📗 Read Model (green) | `FesStarter.{Context}/{Query}.cs` (in same file) |
-| ⚙️ Processor (purple) | `FesStarter.Api/Features/Translations/` |
-| Swimlane/Context    | `FesStarter.{Context}/` project |
+| Event (orange)      | `{ProjectName}.Events/{Context}/{Event}.cs` |
+| Command (blue)      | `{ProjectName}.{Context}/Features/{Feature}.cs` |
+| Read Model (green)  | `{ProjectName}.{Context}/Features/{Query}.cs` (colocated with projections) |
+| Translation (purple)| `{ProjectName}.{Context}/Features/{Translation}.cs` (in reacting module) |
+| Swimlane/Context    | `{ProjectName}.{Context}/` project |

@@ -1,15 +1,20 @@
-# FesStarter - FileEventStore Vertical Slice Starter
+# FesStarter - Event-Sourced Modular Monolith Starter
 
 A full-stack starter kit demonstrating:
+- **CQRS + Event Sourcing** with [FileEventStore](https://github.com/jocelynenglund/FileBasedEventStore)
 - **Vertical Slice Architecture** - Features organized by use case, not layer
-- **Event Sourcing** with [FileEventStore](https://github.com/jocelynenglund/FileBasedEventStore)
-- **Angular Frontend** - Matching vertical slices on the client
+- **Modular Monolith** - Bounded contexts as separate class library projects
+- **Angular Frontend** - Zoneless change detection with signals
 
 ## Quick Start
 
-**Run the API:**
+**Run with Aspire (recommended):**
 ```bash
-cd fes-starter
+dotnet run --project src/FesStarter.AppHost
+```
+
+**Run the API standalone:**
+```bash
 dotnet run --project src/FesStarter.Api
 # API at http://localhost:5000
 ```
@@ -25,103 +30,73 @@ npm start
 ## Project Structure
 
 ```
-fes-starter/
-├── src/
-│   ├── FesStarter.Api/               # Backend API
-│   │   ├── Features/                 # Vertical slices
-│   │   │   ├── CreateTodo/
-│   │   │   │   ├── Command.cs
-│   │   │   │   ├── Handler.cs
-│   │   │   │   └── Endpoint.cs
-│   │   │   ├── CompleteTodo/
-│   │   │   └── ListTodos/
-│   │   └── Domain/
-│   │       └── TodoAggregate.cs
-│   │
-│   └── FesStarter.Web/               # Angular Frontend
-│       └── src/app/
-│           ├── features/             # Matching vertical slices
-│           │   ├── create-todo/
-│           │   │   ├── create-todo.component.ts
-│           │   │   ├── create-todo.component.html
-│           │   │   └── create-todo.component.scss
-│           │   └── list-todos/
-│           │       └── ...
-│           └── shared/
-│               ├── api.service.ts    # HTTP client
-│               └── api.types.ts      # Shared DTOs
+src/
+├── FesStarter.Events/              # Shared event contracts between modules
+│   ├── Orders/OrderEvents.cs
+│   ├── Inventory/InventoryEvents.cs
+│   ├── IEventPublisher.cs
+│   ├── ICorrelatedEvent.cs
+│   ├── IIdempotentCommand.cs
+│   └── DomainEventNotification.cs
 │
-└── tests/
-    └── FesStarter.Api.Tests/
-```
+├── FesStarter.Orders/              # Orders bounded context
+│   ├── OrdersModule.cs             # DI + endpoint registration
+│   ├── Domain/
+│   │   └── OrderAggregate.cs       # Write model (state machine)
+│   └── Features/
+│       ├── PlaceOrder.cs           # Command + Handler + Endpoint
+│       ├── ShipOrder.cs            # Command + Handler + Endpoint
+│       ├── ListOrders.cs           # Query + ReadModel + Projections
+│       └── MarkOrderReservedOnStockReserved.cs  # Cross-context translation
+│
+├── FesStarter.Inventory/           # Inventory bounded context
+│   ├── InventoryModule.cs
+│   ├── Domain/
+│   │   └── ProductStockAggregate.cs
+│   └── Features/
+│       ├── InitializeStock.cs      # Command + Handler + Endpoint
+│       ├── GetStock.cs             # Query + ReadModel + Projections
+│       ├── ReserveStockOnOrderPlaced.cs   # Cross-context translation
+│       └── DeductStockOnOrderShipped.cs   # Cross-context translation
+│
+├── FesStarter.Api/                 # Composition root (thin!)
+│   ├── Program.cs                  # Wire modules, middleware, run
+│   └── Infrastructure/             # Correlation IDs, Idempotency, ReadModel init
+│
+├── FesStarter.AppHost/             # Aspire orchestration
+├── FesStarter.ServiceDefaults/     # OpenTelemetry, health checks
+└── FesStarter.Web/                 # Angular 21 frontend (zoneless, signals)
 
-## Vertical Slices - Backend
-
-Each feature is self-contained:
-
-```
-Features/CreateTodo/
-├── Command.cs      # Input DTO
-├── Handler.cs      # Business logic (uses IEventSession)
-└── Endpoint.cs     # HTTP mapping
-```
-
-**Handler uses FileEventStore Session:**
-```csharp
-public async Task<CreateTodoResponse> HandleAsync(CreateTodoCommand command)
-{
-    await using var session = _sessionFactory.OpenSession();
-    
-    var todo = await session.AggregateStreamOrCreateAsync<TodoAggregate>(id);
-    todo.Create(id, command.Title);
-    
-    await session.SaveChangesAsync();
-    
-    return new CreateTodoResponse(id);
-}
-```
-
-## Vertical Slices - Frontend
-
-Each Angular feature matches a backend slice:
-
-```
-features/create-todo/
-├── create-todo.component.ts    # Component logic
-├── create-todo.component.html  # Template
-└── create-todo.component.scss  # Styles
-```
-
-**Component uses shared API service:**
-```typescript
-this.api.createTodo({ title: this.title }).subscribe({
-  next: () => {
-    this.todoCreated.emit();
-  }
-});
+tests/
+├── FesStarter.Orders.Tests/        # Aggregate unit tests
+├── FesStarter.Inventory.Tests/     # Aggregate unit tests
+└── FesStarter.Api.Tests/           # Integration tests
 ```
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/todos` | Create a new todo |
-| POST | `/api/todos/{id}/complete` | Mark todo as complete |
-| GET | `/api/todos` | List all todos |
+| POST | `/api/orders` | Place a new order |
+| POST | `/api/orders/{orderId}/ship` | Ship an order |
+| GET | `/api/orders` | List all orders |
+| POST | `/api/products/{productId}/stock` | Initialize product stock |
+| GET | `/api/products/{productId}/stock` | Get stock for a product |
+| GET | `/api/products/stock` | List all stock |
 
 ## Adding a New Feature
 
 ### Backend
-1. Create folder: `Features/MyFeature/`
-2. Add `Command.cs`, `Handler.cs`, `Endpoint.cs`
-3. Register handler in `Program.cs`
-4. Map endpoint in `Program.cs`
+1. Create `{FeatureName}.cs` in the module's `Features/` folder
+2. Add command/query record, handler class, and endpoint static class
+3. Register handler in the module's `Add{X}Module()`
+4. Map endpoint in the module's `Map{X}Endpoints()`
 
 ### Frontend
-1. Create folder: `features/my-feature/`
-2. Add component files
-3. Add method to `api.service.ts`
-4. Wire into app
+1. Add types to `{feature}.types.ts`
+2. Add API method to `{feature}.api.ts`
+3. Create component (`{feature-name}.component.ts`) using signals for state
+4. Wire into page component in `{feature}.routes.ts`
 
 ## Using as a Template
 

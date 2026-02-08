@@ -11,37 +11,43 @@ FesStarter.Orders/
 ├── OrdersModule.cs                 # DI registration + endpoint mapping
 ├── Domain/
 │   └── OrderAggregate.cs          # Write model (state machine)
-├── Features/
-│   ├── PlaceOrder.cs              # Command + Handler + Endpoint
-│   ├── ShipOrder.cs               # Command + Handler + Endpoint
-│   └── ListOrders.cs              # Query Handler + Endpoint + ReadModel
-└── Projections/                   # (if complex, separate projection handlers)
+└── Features/
+    ├── PlaceOrder.cs              # Command + Handler + Endpoint
+    ├── ShipOrder.cs               # Command + Handler + Endpoint
+    ├── ListOrders.cs              # Query + ReadModel + Projections
+    └── MarkOrderReservedOnStockReserved.cs  # Cross-context translation
 ```
 
 ### Where Do Read Models Live?
 
-**Read models are part of the Query layer and live with their query handlers:**
+**Read models, projections, and query handlers are colocated in the same feature file:**
 
-- `ListOrders.cs` contains both:
-  - `OrderReadModel` - the denormalized read state
+- `ListOrders.cs` contains:
+  - `OrderDto` - the DTO record
+  - `OrderReadModel` - the denormalized read state (ConcurrentDictionary, singleton)
+  - `OrderReadModelProjections` - MediatR notification handler that updates the read model
   - `ListOrdersHandler` - the query handler that reads from the model
   - `ListOrdersEndpoint` - HTTP GET endpoint
 
 **Why this structure?**
-1. **Cohesion**: Query logic, read model, and data together
+1. **Cohesion**: Query logic, read model, projections, and endpoint all together
 2. **Single responsibility**: Not splitting a query across files
 3. **Navigation**: Understanding "how do we query orders?" - look at ListOrders.cs
 
-**Event projections (eventually consistent updates) live in the API project:**
+### Where Do Cross-Context Translations Live?
+
+**Translations live inside the module that owns the reaction:**
 
 ```
-FesStarter.Api/
-├── Features/Projections/
-│   ├── OrderReadModelProjections.cs      # Listens to Order events
-│   └── StockReadModelProjections.cs      # Listens to Inventory events
+FesStarter.Inventory/Features/
+├── ReserveStockOnOrderPlaced.cs        # Listens to OrderPlaced → reserves stock
+└── DeductStockOnOrderShipped.cs        # Listens to OrderShipped → deducts stock
+
+FesStarter.Orders/Features/
+└── MarkOrderReservedOnStockReserved.cs # Listens to StockReserved → marks order placed
 ```
 
-This separates infrastructure concerns (MediatR event handling) from business logic.
+Each translation is a MediatR `INotificationHandler<DomainEventNotification<T>>` that reacts to events from another bounded context.
 
 ---
 
@@ -110,11 +116,11 @@ public static class ListOrdersEndpoint
 
 ### Eventually Consistent Projections
 
-Events automatically update read models via MediatR:
+Events automatically update read models via MediatR (colocated in the query feature file):
 
 ```csharp
-// In API/Features/Projections/OrderReadModelProjections.cs
-public class OrderReadModelProjections(OrderReadModel readModel, ILogger logger) :
+// In Orders/Features/ListOrders.cs (colocated with read model and query handler)
+public class OrderReadModelProjections(OrderReadModel readModel, ILogger<OrderReadModelProjections> logger) :
     INotificationHandler<DomainEventNotification<OrderPlaced>>,
     INotificationHandler<DomainEventNotification<OrderStockReserved>>,
     INotificationHandler<DomainEventNotification<OrderShipped>>
@@ -487,7 +493,7 @@ public void OrderReadModel_AppliesOrderPlaced()
    - Applies to OrderReadModel
    - Logs with correlation ID
 
-9. OrderToInventoryHandler (Subscriber):
+9. ReserveStockOnOrderPlacedHandler (Subscriber, in Inventory module):
    - Translates OrderPlaced → StockReserved
    - Publishes StockReserved event
    - (With CorrelationId="request-001", CausationId=OrderPlaced)
@@ -517,17 +523,19 @@ If client retries (same IdempotencyKey):
 
 | Layer | Location | Example |
 |-------|----------|---------|
-| **Domain (Write)** | `Orders/Domain/` | OrderAggregate |
-| **Features (Commands)** | `Orders/Features/` | PlaceOrder.cs |
-| **Read Models** | `Orders/Features/` | OrderReadModel in ListOrders.cs |
-| **Queries** | `Orders/Features/` | ListOrdersHandler in ListOrders.cs |
-| **Projections** | `Api/Features/Projections/` | OrderReadModelProjections.cs |
+| **Domain (Write)** | `{Module}/Domain/` | OrderAggregate |
+| **Features (Commands)** | `{Module}/Features/` | PlaceOrder.cs |
+| **Read Models** | `{Module}/Features/` | OrderReadModel in ListOrders.cs |
+| **Projections** | `{Module}/Features/` | OrderReadModelProjections in ListOrders.cs |
+| **Queries** | `{Module}/Features/` | ListOrdersHandler in ListOrders.cs |
+| **Translations** | `{Reacting Module}/Features/` | ReserveStockOnOrderPlaced.cs |
 | **Events** | `Events/{Context}/` | OrderPlaced.cs (implements ICorrelatedEvent) |
 | **Infrastructure** | `Api/Infrastructure/` | CorrelationContext, IdempotencyService |
 
 **Key architectural decisions:**
-- ✅ Commands publish events only (no direct read model updates)
-- ✅ Read models update asynchronously via event projections
-- ✅ All events tracked with CorrelationId for tracing
-- ✅ Commands support IIdempotentCommand for safe retries
-- ✅ Stream IDs generated automatically by library
+- Commands publish events only (no direct read model updates)
+- Read models, projections, and queries colocated in same feature file
+- Cross-context translations live in the module that owns the reaction
+- All events tracked with CorrelationId for distributed tracing
+- Commands support IIdempotentCommand for safe retries
+- Stream IDs generated automatically by FileEventStore library
