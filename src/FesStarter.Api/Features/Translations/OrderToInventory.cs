@@ -43,7 +43,7 @@ public class OrderToInventoryHandler(
 
         // Mark order as reserved
         await using var orderSession = sessionFactory.OpenSession();
-        var order = await orderSession.AggregateStreamAsync<OrderAggregate>($"order-{evt.OrderId}");
+        var order = await orderSession.AggregateStreamAsync<OrderAggregate>($"{evt.OrderId}");
         if (order != null)
         {
             order.MarkReserved();

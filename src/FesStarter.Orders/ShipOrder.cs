@@ -13,7 +13,7 @@ public class ShipOrderHandler(IEventSessionFactory sessionFactory, IEventPublish
     {
         await using var session = sessionFactory.OpenSession();
 
-        var order = await session.AggregateStreamAsync<OrderAggregate>($"order-{command.OrderId}")
+        var order = await session.AggregateStreamAsync<OrderAggregate>($"{command.OrderId}")
             ?? throw new InvalidOperationException($"Order {command.OrderId} not found");
 
         order.Ship();
