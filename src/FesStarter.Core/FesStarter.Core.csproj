@@ -11,4 +11,8 @@
     <PackageReference Include="MediatR" Version="12.4.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FesStarter.Events\FesStarter.Events.csproj" />
+  </ItemGroup>
+
 </Project>

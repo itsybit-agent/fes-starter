@@ -69,7 +69,20 @@ public class InMemoryIdempotencyService : IIdempotencyService
             var result = await executor();
 
             var cacheExpiration = expiration ?? _defaultExpiration;
-            _cache.Set(cacheKey, result, cacheExpiration);
+            var cacheOptions = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = cacheExpiration
+            };
+            cacheOptions.PostEvictionCallbacks.Add(
+                new PostEvictionCallbackRegistration
+                {
+                    EvictionCallback = (key, _, _, _) =>
+                    {
+                        // Clean up semaphore when cache entry expires
+                        _locks.TryRemove(key.ToString() ?? "", out _);
+                    }
+                });
+            _cache.Set(cacheKey, result, cacheOptions);
 
             _logger.LogInformation(
                 "Cached idempotent command result with key={Key}, expiration={Hours}h",
@@ -77,6 +90,76 @@ public class InMemoryIdempotencyService : IIdempotencyService
                 cacheExpiration.TotalHours);
 
             return result;
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    public async Task GetOrExecuteAsync(
+        string idempotencyKey,
+        Func<Task> executor,
+        TimeSpan? expiration = null,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(idempotencyKey))
+        {
+            // No idempotency key, execute without caching
+            await executor();
+            return;
+        }
+
+        var cacheKey = $"idempotency:{idempotencyKey}";
+
+        // First check: fast path for cache hits without locking
+        if (_cache.TryGetValue(cacheKey, out _))
+        {
+            _logger.LogInformation(
+                "Idempotency cache hit for key={Key}, skipping execution",
+                idempotencyKey);
+            return;
+        }
+
+        // Get or create semaphore for this key
+        var semaphore = _locks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+
+        await semaphore.WaitAsync(ct);
+        try
+        {
+            // Second check: after acquiring lock, check cache again (double-check locking)
+            if (_cache.TryGetValue(cacheKey, out _))
+            {
+                _logger.LogInformation(
+                    "Idempotency cache hit for key={Key} (after lock acquisition), skipping execution",
+                    idempotencyKey);
+                return;
+            }
+
+            // Execute and cache
+            _logger.LogDebug("Idempotency cache miss for key={Key}, executing handler", idempotencyKey);
+            await executor();
+
+            var cacheExpiration = expiration ?? _defaultExpiration;
+            var cacheOptions = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = cacheExpiration
+            };
+            cacheOptions.PostEvictionCallbacks.Add(
+                new PostEvictionCallbackRegistration
+                {
+                    EvictionCallback = (key, _, _, _) =>
+                    {
+                        // Clean up semaphore when cache entry expires
+                        _locks.TryRemove(key.ToString() ?? "", out _);
+                    }
+                });
+            _cache.Set(cacheKey, true, cacheOptions);
+
+            _logger.LogInformation(
+                "Cached idempotent command with key={Key}, expiration={Hours}h",
+                idempotencyKey,
+                cacheExpiration.TotalHours);
         }
         finally
         {

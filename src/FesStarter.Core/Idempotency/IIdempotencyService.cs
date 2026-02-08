@@ -15,4 +15,14 @@ public interface IIdempotencyService
         Func<Task<T>> executor,
         TimeSpan? expiration = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Execute a command without returning a result, caching execution by idempotency key.
+    /// If the key is already cached, skips execution and returns immediately.
+    /// </summary>
+    Task GetOrExecuteAsync(
+        string idempotencyKey,
+        Func<Task> executor,
+        TimeSpan? expiration = null,
+        CancellationToken ct = default);
 }

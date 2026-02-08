@@ -20,7 +20,7 @@ public record InitializeStockRequest(string ProductName, int InitialQuantity);
 
 public class InitializeStockHandler(IEventSessionFactory sessionFactory, IEventPublisher eventPublisher)
 {
-    public async Task<bool> HandleAsync(InitializeStockCommand command)
+    public async Task HandleAsync(InitializeStockCommand command)
     {
         await using var session = sessionFactory.OpenSession();
 
@@ -30,8 +30,6 @@ public class InitializeStockHandler(IEventSessionFactory sessionFactory, IEventP
         var events = stock.UncommittedEvents.ToList();
         await session.SaveChangesAsync();
         await eventPublisher.PublishAsync(events);
-
-        return true;
     }
 }
 
