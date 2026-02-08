@@ -1,45 +1,48 @@
-# FesStarter - Event-Sourced Modular Monolith Starter
+# FES Starter
 
-A full-stack starter kit demonstrating:
-- **CQRS + Event Sourcing** with [FileEventStore](https://github.com/jocelynenglund/FileBasedEventStore)
-- **Vertical Slice Architecture** - Features organized by use case, not layer
-- **Modular Monolith** - Bounded contexts as separate class library projects
-- **Angular Frontend** - Zoneless change detection with signals
+Event-Sourced Modular Monolith Starter with CQRS, Vertical Slices, and Angular.
 
-## Quick Start
-
-### 1. Install dependencies
+## Installation
 
 ```bash
-# Backend
-dotnet restore
+# Install template (once)
+dotnet new install itsybit-agent/fes-starter
 
-# Frontend (required before running!)
-cd src/FesStarter.Web
+# Or from local clone
+git clone https://github.com/itsybit-agent/fes-starter.git
+dotnet new install ./fes-starter
+```
+
+## Create a New Project
+
+```bash
+# Create project
+dotnet new fes -n MyApp
+cd MyApp
+
+# Install frontend dependencies
+cd src/MyApp.Web
 npm install
 cd ../..
+
+# Run with Aspire
+dotnet run --project src/MyApp.AppHost
 ```
 
-### 2. Run
-
-**Option A: With Aspire (recommended)**
-```bash
-dotnet run --project src/FesStarter.AppHost
-```
 Opens Aspire dashboard with API + Angular running together.
-
-**Option B: Separately**
-```bash
-# Terminal 1 - API
-dotnet run --project src/FesStarter.Api
-
-# Terminal 2 - Angular
-cd src/FesStarter.Web
-npm start
-```
 
 - API: http://localhost:5000
 - Web: http://localhost:4200
+- Aspire Dashboard: http://localhost:15000
+
+## What's Included
+
+- **CQRS + Event Sourcing** with [FileEventStore](https://github.com/jocelynenglund/FileBasedEventStore)
+- **Vertical Slice Architecture** - Features organized by use case
+- **Modular Monolith** - Bounded contexts as separate projects
+- **Angular Frontend** - Zoneless change detection with signals
+- **Aspire** - Orchestration and observability
+- **Scaffold Skills** - AI-assisted code generation
 
 ## Project Structure
 
@@ -129,23 +132,10 @@ See [.claude/skills/README.md](.claude/skills/README.md) for details.
 1. Copy existing component
 2. Update types, API calls, and template
 
-## Using as a Template
+## Uninstall Template
 
 ```bash
-# Install template (once)
-dotnet new install ./path/to/fes-starter
-
-# Create new project
-dotnet new fes -n MyProject
-cd MyProject
-
-# Install frontend dependencies
-cd src/MyProject.Web
-npm install
-cd ../..
-
-# Run it
-dotnet run --project src/MyProject.AppHost
+dotnet new uninstall itsybit-agent/fes-starter
 ```
 
 ## License
