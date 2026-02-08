@@ -1,4 +1,5 @@
 using FileEventStore.Session;
+using FesStarter.Events;
 using FesStarter.Events.Orders;
 using FesStarter.Inventory;
 using FesStarter.Orders;
@@ -13,6 +14,7 @@ namespace FesStarter.Api.Features.Translations;
 /// </summary>
 public class OrderToInventoryHandler(
     IEventSessionFactory sessionFactory,
+    IEventPublisher eventPublisher,
     StockReadModel stockReadModel,
     OrderReadModel orderReadModel,
     ILogger<OrderToInventoryHandler> logger) :
@@ -26,7 +28,7 @@ public class OrderToInventoryHandler(
 
         await using var session = sessionFactory.OpenSession();
 
-        var stock = await session.AggregateStreamAsync<ProductStockAggregate>($"stock-{evt.ProductId}");
+        var stock = await session.AggregateStreamAsync<ProductStockAggregate>($"{evt.ProductId}");
         if (stock == null)
         {
             logger.LogWarning("No stock found for product {ProductId}", evt.ProductId);
@@ -37,6 +39,7 @@ public class OrderToInventoryHandler(
         var stockEvents = stock.UncommittedEvents.ToList();
         await session.SaveChangesAsync();
         foreach (var e in stockEvents) stockReadModel.Apply(e);
+        await eventPublisher.PublishAsync(stockEvents, ct);
 
         // Mark order as reserved
         await using var orderSession = sessionFactory.OpenSession();
@@ -47,6 +50,7 @@ public class OrderToInventoryHandler(
             var orderEvents = order.UncommittedEvents.ToList();
             await orderSession.SaveChangesAsync();
             foreach (var e in orderEvents) orderReadModel.Apply(e);
+            await eventPublisher.PublishAsync(orderEvents, ct);
         }
     }
 
@@ -63,7 +67,7 @@ public class OrderToInventoryHandler(
         }
 
         await using var session = sessionFactory.OpenSession();
-        var stock = await session.AggregateStreamAsync<ProductStockAggregate>($"stock-{order.ProductId}");
+        var stock = await session.AggregateStreamAsync<ProductStockAggregate>($"{order.ProductId}");
         if (stock == null)
         {
             logger.LogWarning("No stock found for product {ProductId}", order.ProductId);
@@ -74,5 +78,6 @@ public class OrderToInventoryHandler(
         var events = stock.UncommittedEvents.ToList();
         await session.SaveChangesAsync();
         foreach (var e in events) stockReadModel.Apply(e);
+        await eventPublisher.PublishAsync(events, ct);
     }
 }

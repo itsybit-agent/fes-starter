@@ -14,7 +14,7 @@ public class InitializeStockHandler(IEventSessionFactory sessionFactory, IEventP
     {
         await using var session = sessionFactory.OpenSession();
 
-        var stock = await session.AggregateStreamOrCreateAsync<ProductStockAggregate>($"stock-{command.ProductId}");
+        var stock = await session.AggregateStreamOrCreateAsync<ProductStockAggregate>($"{command.ProductId}");
         stock.Initialize(command.ProductId, command.ProductName, command.InitialQuantity);
 
         var events = stock.UncommittedEvents.ToList();

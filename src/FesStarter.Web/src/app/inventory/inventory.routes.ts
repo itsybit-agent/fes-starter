@@ -15,9 +15,7 @@ import { StockListComponent } from './stock-list.component';
   `,
   styles: [`.inventory-page { padding: 1rem; }`]
 })
-export class InventoryPage {
-  @ViewChild(StockListComponent) stockList!: StockListComponent;
-}
+export class InventoryPage { }
 
 export const inventoryRoutes: Routes = [
   { path: '', component: InventoryPage }
