@@ -40,7 +40,7 @@ public class OrderToInventoryHandler(
 
         // Mark order as reserved
         await using var orderSession = sessionFactory.OpenSession();
-        var order = await orderSession.AggregateStreamAsync<OrderAggregate>($"{evt.OrderId}");
+        var order = await orderSession.AggregateStreamAsync<OrderAggregate>(evt.OrderId);
         if (order != null)
         {
             order.MarkReserved();
@@ -56,7 +56,7 @@ public class OrderToInventoryHandler(
         logger.LogInformation("Translating OrderShipped -> StockDeducted for Order {OrderId}", evt.OrderId);
 
         await using var orderSession = sessionFactory.OpenSession();
-        var order = await orderSession.AggregateStreamAsync<OrderAggregate>($"{evt.OrderId}");
+        var order = await orderSession.AggregateStreamAsync<OrderAggregate>(evt.OrderId);
         if (order == null)
         {
             logger.LogWarning("Order {OrderId} not found", evt.OrderId);
@@ -64,10 +64,10 @@ public class OrderToInventoryHandler(
         }
 
         await using var session = sessionFactory.OpenSession();
-        var stock = await session.AggregateStreamAsync<ProductStockAggregate>($"{order.ProductId}");
+        var stock = await session.AggregateStreamAsync<ProductStockAggregate>(order.ProductId);
         if (stock == null)
         {
-            logger.LogWarning("No stock found for product {order.ProductId}", order.ProductId);
+            logger.LogWarning("No stock found for product {ProductId}", order.ProductId);
             return;
         }
 

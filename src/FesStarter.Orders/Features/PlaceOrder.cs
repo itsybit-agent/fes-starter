@@ -20,7 +20,7 @@ public class PlaceOrderHandler(IEventSessionFactory sessionFactory, IEventPublis
         var orderId = Guid.NewGuid().ToString();
 
         await using var session = sessionFactory.OpenSession();
-        var order = await session.AggregateStreamOrCreateAsync<OrderAggregate>($"order-{orderId}");
+        var order = await session.AggregateStreamOrCreateAsync<OrderAggregate>(orderId);
         order.Place(orderId, command.ProductId, command.Quantity);
 
         var events = order.UncommittedEvents.ToList();
