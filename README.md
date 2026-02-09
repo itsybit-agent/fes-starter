@@ -2,137 +2,165 @@
 
 Event-Sourced Modular Monolith Starter with CQRS, Vertical Slices, and Angular.
 
-## Installation
+## Quick Start
 
 ```bash
-# Clone and install template
-git clone https://github.com/itsybit-agent/fes-starter.git
+# Install all templates
 dotnet new install ./fes-starter
-```
+dotnet new install ./fes-starter/templates/fes-module
+dotnet new install ./fes-starter/templates/fes-command
+dotnet new install ./fes-starter/templates/fes-query
+dotnet new install ./fes-starter/templates/fes-automation
 
-## Create a New Project
-
-```bash
-# Create project
+# Create a new project
 dotnet new fes -n MyApp
 cd MyApp
-
-# Install frontend dependencies
-cd src/MyApp.Web
-npm install
-cd ../..
 
 # Run with Aspire
 dotnet run --project src/MyApp.AppHost
 ```
 
-Opens Aspire dashboard with API + Angular running together.
+## Available Templates
 
-- API: http://localhost:5000
-- Web: http://localhost:4200
-- Aspire Dashboard: http://localhost:15000
+| Template | Short Name | Description |
+|----------|------------|-------------|
+| FES Starter | `fes` | Full project with example Orders/Inventory modules |
+| FES Module | `fes-module` | New bounded context (project + aggregate + module) |
+| FES Command | `fes-command` | Write operation (command + handler + endpoint) |
+| FES Query | `fes-query` | Read operation (query + handler + read model + endpoint) |
+| FES Automation | `fes-automation` | Cross-context event handler |
 
-## What's Included
+## Example: Building ShopQueue from Scratch
 
-- **CQRS + Event Sourcing** with [FileEventStore](https://github.com/jocelynenglund/FileBasedEventStore)
-- **Vertical Slice Architecture** - Features organized by use case
-- **Modular Monolith** - Bounded contexts as separate projects
-- **Angular Frontend** - Zoneless change detection with signals
-- **Aspire** - Orchestration and observability
-- **Scaffold Skills** - AI-assisted code generation
+Here's how to build a complete app using the templates:
+
+### 1. Create the project
+
+```bash
+dotnet new fes -n ShopQueue
+cd ShopQueue
+```
+
+### 2. Remove example modules (optional)
+
+```bash
+rm -rf src/ShopQueue.Orders src/ShopQueue.Inventory
+# Edit ShopQueue.slnx to remove references
+# Edit src/ShopQueue.Api/Program.cs to remove module registrations
+```
+
+### 3. Create your modules
+
+```bash
+# Shops module
+dotnet new fes-module -n Shops -o src/ShopQueue.Shops --namespace ShopQueue
+dotnet sln add src/ShopQueue.Shops/Shops.csproj
+
+# Queues module  
+dotnet new fes-module -n Queues -o src/ShopQueue.Queues --namespace ShopQueue
+dotnet sln add src/ShopQueue.Queues/Queues.csproj
+```
+
+### 4. Add events
+
+Create `src/ShopQueue.Events/Shops/ShopEvents.cs`:
+```csharp
+public record ShopRegistered(string ShopId, string Name) : IStoreableEvent;
+```
+
+Create `src/ShopQueue.Events/Queues/QueueEvents.cs`:
+```csharp
+public record QueueCreated(string QueueId, string ShopId, string Name) : IStoreableEvent;
+public record CustomerJoined(string QueueId, string CustomerId) : IStoreableEvent;
+public record CustomerServed(string QueueId, string CustomerId) : IStoreableEvent;
+```
+
+### 5. Scaffold features
+
+```bash
+# Shops module
+dotnet new fes-command -n RegisterShop -o src/ShopQueue.Shops/Features --module Shops --namespace ShopQueue
+dotnet new fes-query -n ListShops -o src/ShopQueue.Shops/Features --module Shops --namespace ShopQueue
+
+# Queues module
+dotnet new fes-command -n CreateQueue -o src/ShopQueue.Queues/Features --module Queues --namespace ShopQueue
+dotnet new fes-command -n JoinQueue -o src/ShopQueue.Queues/Features --module Queues --namespace ShopQueue
+dotnet new fes-command -n ServeCustomer -o src/ShopQueue.Queues/Features --module Queues --namespace ShopQueue
+dotnet new fes-query -n ListQueues -o src/ShopQueue.Queues/Features --module Queues --namespace ShopQueue
+```
+
+### 6. Add cross-context automation
+
+```bash
+dotnet new fes-automation -n NotifyNextCustomerOnServed -o src/ShopQueue.Queues/Features --module Queues --namespace ShopQueue
+```
+
+### 7. Implement the logic
+
+1. **Edit aggregates** — Add state and command methods
+2. **Edit handlers** — Call aggregate methods, save changes
+3. **Edit events** — Add required properties
+4. **Wire modules** — Register in `Program.cs`
+
+### 8. Run
+
+```bash
+dotnet run --project src/ShopQueue.AppHost
+```
 
 ## Project Structure
 
 ```
 src/
-├── FesStarter.Events/              # Shared event contracts between modules
-│   ├── Orders/OrderEvents.cs
-│   ├── Inventory/InventoryEvents.cs
-│   ├── IEventPublisher.cs
-│   ├── ICorrelatedEvent.cs
-│   ├── IIdempotentCommand.cs
-│   └── DomainEventNotification.cs
+├── {App}.Events/                   # Shared event contracts
+│   ├── {Module}/Events.cs
+│   └── ICorrelatedEvent.cs
 │
-├── FesStarter.Orders/              # Orders bounded context
-│   ├── OrdersModule.cs             # DI + endpoint registration
+├── {App}.{Module}/                 # Bounded context
+│   ├── {Module}Module.cs           # DI + endpoint registration
 │   ├── Domain/
-│   │   └── OrderAggregate.cs       # Write model (state machine)
+│   │   └── {Module}Aggregate.cs    # Write model
 │   └── Features/
-│       ├── PlaceOrder.cs           # Command + Handler + Endpoint
-│       ├── ShipOrder.cs            # Command + Handler + Endpoint
-│       ├── ListOrders.cs           # Query + ReadModel + Projections
-│       └── MarkOrderReservedOnStockReserved.cs  # Cross-context translation
+│       ├── {Command}.cs            # Command + Handler + Endpoint
+│       ├── {Query}.cs              # Query + Handler + ReadModel
+│       └── {Automation}.cs         # Cross-context handler
 │
-├── FesStarter.Inventory/           # Inventory bounded context
-│   ├── InventoryModule.cs
-│   ├── Domain/
-│   │   └── ProductStockAggregate.cs
-│   └── Features/
-│       ├── InitializeStock.cs      # Command + Handler + Endpoint
-│       ├── GetStock.cs             # Query + ReadModel + Projections
-│       ├── ReserveStockOnOrderPlaced.cs   # Cross-context translation
-│       └── DeductStockOnOrderShipped.cs   # Cross-context translation
+├── {App}.Api/                      # Composition root
+│   ├── Program.cs
+│   └── Infrastructure/
 │
-├── FesStarter.Api/                 # Composition root (thin!)
-│   ├── Program.cs                  # Wire modules, middleware, run
-│   └── Infrastructure/             # Correlation IDs, Idempotency, ReadModel init
-│
-├── FesStarter.AppHost/             # Aspire orchestration
-├── FesStarter.ServiceDefaults/     # OpenTelemetry, health checks
-└── FesStarter.Web/                 # Angular 21 frontend (zoneless, signals)
+├── {App}.AppHost/                  # Aspire orchestration
+├── {App}.ServiceDefaults/          # Telemetry, health
+└── {App}.Web/                      # Angular frontend
 
-tests/
-├── FesStarter.Orders.Tests/        # Aggregate unit tests
-├── FesStarter.Inventory.Tests/     # Aggregate unit tests
-└── FesStarter.Api.Tests/           # Integration tests
+templates/                          # Sub-templates
+├── fes-module/
+├── fes-command/
+├── fes-query/
+└── fes-automation/
 ```
 
-## API Endpoints
+## Adding Features (AI-Assisted)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/orders` | Place a new order |
-| POST | `/api/orders/{orderId}/ship` | Ship an order |
-| GET | `/api/orders` | List all orders |
-| POST | `/api/products/{productId}/stock` | Initialize product stock |
-| GET | `/api/products/{productId}/stock` | Get stock for a product |
-| GET | `/api/products/stock` | List all stock |
-
-## Adding New Features
-
-Use the scaffold skills with Claude:
+If using Claude/AI, the scaffold skills provide guided generation:
 
 ```bash
-# Add a new module (bounded context)
 /scaffold-module Payments "Payment processing"
-
-# Add a command (write operation)
 /scaffold-command Orders CancelOrder "Cancel an order"
-
-# Add a query (read operation)
 /scaffold-query Orders GetOrderDetails "Get order by ID"
-
-# Add an automation (cross-module event handler)
-/scaffold-automation Inventory ReserveStockOnOrderPlaced "Reserve stock when order placed"
+/scaffold-automation Inventory ReserveStockOnOrderPlaced
 ```
 
 See [.claude/skills/README.md](.claude/skills/README.md) for details.
 
-### Manual approach
-
-**Backend:**
-1. Copy an existing feature file from `Features/`
-2. Rename and update the command/query/handler
-3. Wire into the module
-
-**Frontend:**
-1. Copy existing component
-2. Update types, API calls, and template
-
-## Uninstall Template
+## Uninstall Templates
 
 ```bash
-dotnet new uninstall itsybit-agent/fes-starter
+dotnet new uninstall fes-starter
+dotnet new uninstall fes-module
+dotnet new uninstall fes-command
+dotnet new uninstall fes-query
+dotnet new uninstall fes-automation
 ```
 
 ## License

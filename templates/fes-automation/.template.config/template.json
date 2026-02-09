@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "itsyBIT",
+  "classifications": ["Web", "API", "Event Sourcing"],
+  "identity": "FesStarter.Automation",
+  "name": "FES Automation (Cross-Context Handler)",
+  "shortName": "fes-automation",
+  "tags": {
+    "language": "C#",
+    "type": "item"
+  },
+  "sourceName": "FesAutomation",
+  "symbols": {
+    "module": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "Module/bounded context name (e.g., Inventory)",
+      "defaultValue": "FesModule",
+      "replaces": "FesModule"
+    },
+    "namespace": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "Root namespace",
+      "defaultValue": "FesStarter",
+      "replaces": "FesStarter"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "itsyBIT",
+  "classifications": ["Web", "API", "Event Sourcing"],
+  "identity": "FesStarter.Module",
+  "name": "FES Module (Bounded Context)",
+  "shortName": "fes-module",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "FesModule",
+  "preferNameDirectory": true,
+  "symbols": {
+    "namespace": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "Root namespace (e.g., ShopQueue)",
+      "defaultValue": "FesStarter",
+      "replaces": "FesStarter"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "exclude": ["**/bin/**", "**/obj/**"]
+        }
+      ]
+    }
+  ],
+  "postActions": [
+    {
+      "description": "Add project to solution",
+      "manualInstructions": [
+        { "text": "Run: dotnet sln add <project path>" }
+      ],
+      "actionId": "D396686C-DE0E-4DE6-906D-291CD29FC5DE",
+      "continueOnError": true
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FesStarter.Events\FesStarter.Events.csproj" />
+    <ProjectReference Include="..\FesStarter.Core\FesStarter.Core.csproj" />
+    <ProjectReference Include="..\..\FileBasedEventStore\src\FileEventStore\FileEventStore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="12.5.0" />
+  </ItemGroup>
+
+</Project>

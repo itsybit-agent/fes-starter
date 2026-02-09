@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "itsyBIT",
+  "classifications": ["Web", "API", "Event Sourcing"],
+  "identity": "FesStarter.Query",
+  "name": "FES Query (Read Operation)",
+  "shortName": "fes-query",
+  "tags": {
+    "language": "C#",
+    "type": "item"
+  },
+  "sourceName": "FesQuery",
+  "symbols": {
+    "module": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "Module/bounded context name (e.g., Orders)",
+      "defaultValue": "FesModule",
+      "replaces": "FesModule"
+    },
+    "namespace": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "Root namespace",
+      "defaultValue": "FesStarter",
+      "replaces": "FesStarter"
+    }
+  }
+}
