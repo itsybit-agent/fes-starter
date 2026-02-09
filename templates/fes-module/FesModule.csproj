@@ -7,12 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="..\FesStarter.Events\FesStarter.Events.csproj" />
     <ProjectReference Include="..\FesStarter.Core\FesStarter.Core.csproj" />
-    <ProjectReference Include="..\..\FileBasedEventStore\src\FileEventStore\FileEventStore.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FileEventStore" Version="1.2.0" />
     <PackageReference Include="MediatR" Version="12.5.0" />
   </ItemGroup>
 
