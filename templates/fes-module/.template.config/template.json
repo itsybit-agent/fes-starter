@@ -15,8 +15,8 @@
     "namespace": {
       "type": "parameter",
       "datatype": "string",
-      "description": "Root namespace (e.g., ShopQueue)",
-      "defaultValue": "FesStarter",
+      "description": "Root namespace - must match your project (e.g., bbq, ShopQueue)",
+      "isRequired": true,
       "replaces": "FesStarter"
     }
   },
