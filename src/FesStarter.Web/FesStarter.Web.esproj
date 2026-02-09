@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.1184077">
+  <PropertyGroup>
+    <StartupCommand>npm start</StartupCommand>
+    <JavaScriptTestFramework>Jasmine</JavaScriptTestFramework>
+    <BuildCommand>npm run build</BuildCommand>
+    <ProductionBuildCommand>npm run build -- --configuration production</ProductionBuildCommand>
+    <BuildOutputFolder>$(MSBuildProjectDirectory)\dist\fes-starter-web\browser</BuildOutputFolder>
+    <ShouldRunBuildScript>false</ShouldRunBuildScript>
+  </PropertyGroup>
+</Project>
