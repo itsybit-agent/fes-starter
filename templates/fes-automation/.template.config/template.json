@@ -21,8 +21,8 @@
     "namespace": {
       "type": "parameter",
       "datatype": "string",
-      "description": "Root namespace",
-      "defaultValue": "FesStarter",
+      "description": "Root namespace - must match your project",
+      "isRequired": true,
       "replaces": "FesStarter"
     }
   }
