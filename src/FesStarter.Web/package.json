@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
+    "prestart": "node -e \"const fs=require('fs');if(!fs.existsSync('node_modules')){console.log('Installing dependencies...');require('child_process').execSync('npm install',{stdio:'inherit'})}\"",
     "start": "node -e \"const{execSync}=require('child_process');execSync('ng serve --port '+(process.env.PORT||4200),{stdio:'inherit'})\"",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
